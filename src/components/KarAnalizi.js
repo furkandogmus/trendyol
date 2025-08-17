@@ -121,8 +121,8 @@ const KarAnalizi = ({ urunler, siparisler }) => {
   // Kargo baremi hesaplama fonksiyonu
   const calculateCargoFee = (faturalanacakTutar) => {
     const tutar = parseFloat(faturalanacakTutar || 0);
-    if (tutar < 149.99) return 32.49;
-    if (tutar < 299.99) return 62.00;
+    if (tutar <= 149.99) return 32.49;
+    if (tutar <= 299.99) return 62.00;
     return 75.00;
   };
 
