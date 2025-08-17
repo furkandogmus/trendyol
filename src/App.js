@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ThemeProvider,
   createTheme,
@@ -14,13 +14,11 @@ import {
 import {
   Analytics as AnalyticsIcon,
   ShoppingCart as ShoppingCartIcon,
-  TrendingUp as TrendingUpIcon,
   Inventory as InventoryIcon,
   Assessment as AssessmentIcon
 } from '@mui/icons-material';
 import UrunTablosu from './components/UrunTablosu';
 import SiparisTablosu from './components/SiparisTablosu';
-import KarZararAnalizi from './components/KarZararAnalizi';
 import KarAnalizi from './components/KarAnalizi';
 import Dashboard from './components/Dashboard';
 
@@ -47,8 +45,14 @@ const theme = createTheme({
 });
 
 function App() {
-  const [urunler, setUrunler] = useState([]);
-  const [siparisler, setSiparisler] = useState([]);
+  const [urunler, setUrunler] = useState(() => {
+    const saved = localStorage.getItem('urunler');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [siparisler, setSiparisler] = useState(() => {
+    const saved = localStorage.getItem('siparisler');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [activeTab, setActiveTab] = useState('dashboard');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
@@ -72,10 +76,17 @@ function App() {
     });
   };
 
-  const handleUrunUpdate = (oldUrun, newUrun) => {
-    const updatedUrunler = urunler.map(urun => 
-      urun === oldUrun ? newUrun : urun
-    );
+  const handleUrunUpdate = (originalUrun, updatedUrun) => {
+    // Benzersiz alan kombinasyonu ile ürünü bul ve güncelle
+    const updatedUrunler = urunler.map(urun => {
+      // Tedarikçi Stok Kodu + Ürün Adı kombinasyonu unique olmalı
+      if (urun['Tedarikçi Stok Kodu'] === originalUrun['Tedarikçi Stok Kodu'] && 
+          urun['Ürün Adı'] === originalUrun['Ürün Adı']) {
+        return { ...updatedUrun };
+      }
+      return urun;
+    });
+    
     setUrunler(updatedUrunler);
     setSnackbar({
       open: true,
@@ -126,8 +137,6 @@ function App() {
           onSiparisAdd={handleSiparisAdd}
           onSiparisUpload={handleSiparisUpload}
         />;
-      case 'analiz':
-        return <KarZararAnalizi urunler={urunler} />;
       case 'kar-analizi':
         return <KarAnalizi urunler={urunler} siparisler={siparisler} />;
       default:
@@ -182,14 +191,6 @@ function App() {
                   sx={{ whiteSpace: 'nowrap' }}
                 >
                   Sipariş Tablosu
-                </Button>
-                <Button
-                  variant={activeTab === 'analiz' ? 'contained' : 'outlined'}
-                  startIcon={<TrendingUpIcon />}
-                  onClick={() => setActiveTab('analiz')}
-                  sx={{ whiteSpace: 'nowrap' }}
-                >
-                  Kar-Zarar Analizi
                 </Button>
                 <Button
                   variant={activeTab === 'kar-analizi' ? 'contained' : 'outlined'}

@@ -35,6 +35,7 @@ import {
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import ExcelUploader from './ExcelUploader';
+import * as XLSX from 'xlsx';
 
 const SiparisTablosu = ({ siparisler, onSiparisUpdate, onSiparisAdd, onSiparisUpload }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -525,29 +526,79 @@ const SiparisTablosu = ({ siparisler, onSiparisUpdate, onSiparisAdd, onSiparisUp
     setSelectedKargo('');
   };
 
-  const exportToCSV = () => {
-    const csvContent = [
-      // Başlık satırı
-      Object.keys(filteredSiparisler[0] || {}).filter(key => key !== 'actions').join(','),
-      // Veri satırları
-      ...filteredSiparisler.map(row => 
-        Object.entries(row)
-          .filter(([key]) => key !== 'actions')
-          .map(([, value]) => 
-            typeof value === 'string' && value.includes(',') ? `"${value}"` : value
-          ).join(',')
-      )
-    ].join('\n');
+  const exportToExcel = () => {
+    if (!filteredSiparisler || filteredSiparisler.length === 0) {
+      alert('Dışa aktarılacak veri bulunamadı!');
+      return;
+    }
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `siparisler_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Sipariş verilerini Excel için hazırla
+    const exportData = filteredSiparisler.map(siparis => {
+      const satısTutari = parseFloat(siparis['Satış Tutarı'] || 0);
+      const indirimTutari = parseFloat(siparis['İndirim Tutarı'] || 0);
+      const faturalanacakTutar = parseFloat(siparis['Faturalanacak Tutar'] || 0);
+      const komisyonOrani = parseFloat(siparis['Komisyon Oranı'] || 0);
+      const komisyonTutari = faturalanacakTutar * (komisyonOrani / 100);
+      
+      return {
+        'Barkod': siparis['Barkod'] || '',
+        'Paket No': siparis['Paket No'] || '',
+        'Sipariş Tarihi': siparis['Sipariş Tarihi'] || '',
+        'Alıcı': siparis['Alıcı'] || '',
+        'İl': siparis['İl'] || '',
+        'İlçe': siparis['İlçe'] || '',
+        'Ürün Adı': siparis['Ürün Adı'] || '',
+        'Sipariş Statüsü': siparis['Sipariş Statüsü'] || '',
+        'Adet': siparis['Adet'] || '',
+        'Birim Fiyatı (₺)': parseFloat(siparis['Birim Fiyatı'] || 0).toFixed(2),
+        'Satış Tutarı (₺)': satısTutari.toFixed(2),
+        'İndirim Tutarı (₺)': indirimTutari.toFixed(2),
+        'Faturalanacak Tutar (₺)': faturalanacakTutar.toFixed(2),
+        'Komisyon Oranı (%)': komisyonOrani.toFixed(2),
+        'Komisyon Tutarı (₺)': komisyonTutari.toFixed(2),
+        'Kargo Firması': siparis['Kargo Firması'] || '',
+        'Kargo Kodu': siparis['Kargo Kodu'] || '',
+        'Teslim Tarihi': siparis['Teslim Tarihi'] || '',
+        'Marka': siparis['Marka'] || '',
+        'Stok Kodu': siparis['Stok Kodu'] || '',
+        'Son Güncelleme': new Date().toLocaleString('tr-TR')
+      };
+    });
+
+    // Excel workbook oluştur
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Siparişler');
+
+    // Sütun genişliklerini ayarla
+    const colWidths = [
+      { wch: 15 }, // Barkod
+      { wch: 15 }, // Paket No
+      { wch: 12 }, // Sipariş Tarihi
+      { wch: 20 }, // Alıcı
+      { wch: 12 }, // İl
+      { wch: 15 }, // İlçe
+      { wch: 30 }, // Ürün Adı
+      { wch: 15 }, // Sipariş Statüsü
+      { wch: 8 },  // Adet
+      { wch: 15 }, // Birim Fiyatı
+      { wch: 15 }, // Satış Tutarı
+      { wch: 15 }, // İndirim Tutarı
+      { wch: 18 }, // Faturalanacak Tutar
+      { wch: 15 }, // Komisyon Oranı
+      { wch: 16 }, // Komisyon Tutarı
+      { wch: 15 }, // Kargo Firması
+      { wch: 15 }, // Kargo Kodu
+      { wch: 12 }, // Teslim Tarihi
+      { wch: 15 }, // Marka
+      { wch: 20 }, // Stok Kodu
+      { wch: 20 }  // Son Güncelleme
+    ];
+    ws['!cols'] = colWidths;
+
+    // Dosyayı indir
+    const fileName = `siparisler_guncellenmiş_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   };
 
   return (
@@ -694,10 +745,10 @@ const SiparisTablosu = ({ siparisler, onSiparisUpdate, onSiparisAdd, onSiparisUp
               <Button
                 variant="outlined"
                 startIcon={<DownloadIcon />}
-                onClick={exportToCSV}
+                onClick={exportToExcel}
                 fullWidth
               >
-                CSV İndir
+                Excel İndir
               </Button>
             </Box>
           </Grid>
@@ -788,15 +839,19 @@ const SiparisTablosu = ({ siparisler, onSiparisUpdate, onSiparisAdd, onSiparisUp
       {/* DataGrid */}
       <Paper elevation={3} sx={{ height: 600 }}>
         <DataGrid
-          rows={filteredSiparisler.map((siparis, index) => ({ ...siparis, id: index }))}
+          rows={filteredSiparisler.map((siparis, index) => ({ 
+            ...siparis, 
+            id: `${siparis['Paket No'] || siparis['Sipariş Numarası'] || index}_${index}` 
+          }))}
           columns={columns}
+          getRowId={(row) => row.id}
           initialState={{
             pagination: {
-              paginationModel: { page: 0, pageSize: 25 },
+              paginationModel: { pageSize: 25 },
             },
           }}
-          pageSizeOptions={[10, 25, 50, 100]}
-          disableRowSelectionOnClick
+          pageSizeOptions={[25, 50, 100]}
+          disableSelectionOnClick
           sx={{
             '& .MuiDataGrid-cell': {
               borderBottom: '1px solid #e0e0e0',

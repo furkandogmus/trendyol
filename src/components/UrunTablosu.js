@@ -35,6 +35,7 @@ import {
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import ExcelUploader from './ExcelUploader';
+import * as XLSX from 'xlsx';
 
 const UrunTablosu = ({ urunler, onUrunUpdate, onUrunUpload }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -384,27 +385,64 @@ const UrunTablosu = ({ urunler, onUrunUpdate, onUrunUpload }) => {
     setSelectedKargo('');
   };
 
-  const exportToCSV = () => {
-    const csvContent = [
-      // Başlık satırı
-      Object.keys(filteredUrunler[0] || {}).join(','),
-      // Veri satırları
-      ...filteredUrunler.map(row => 
-        Object.values(row).map(value => 
-          typeof value === 'string' && value.includes(',') ? `"${value}"` : value
-        ).join(',')
-      )
-    ].join('\n');
+  const exportToExcel = () => {
+    if (!filteredUrunler || filteredUrunler.length === 0) {
+      alert('Dışa aktarılacak veri bulunamadı!');
+      return;
+    }
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `urunler_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Dolar kuru ile birlikte hesaplanmış verileri hazırla
+    const exportData = filteredUrunler.map(urun => {
+      const dolarFiyati = parseFloat(urun['Dolar Fiyatı'] || 0);
+      const tlFiyati = dolarFiyati * dolarKuru;
+      
+      return {
+        'Partner ID': urun['Partner ID'] || '',
+        'Tedarikçi Stok Kodu': urun['Tedarikçi Stok Kodu'] || '',
+        'Ürün Adı': urun['Ürün Adı'] || '',
+        'Marka': urun['Marka'] || '',
+        'Kategori İsmi': urun['Kategori İsmi'] || '',
+        'Durum': urun['Durum'] || '',
+        'Ürün Stok Adedi': urun['Ürün Stok Adedi'] || '',
+        'Dolar Fiyatı ($)': dolarFiyati.toFixed(2),
+        'TL Fiyatı (₺)': tlFiyati.toFixed(2),
+        'Güncel Dolar Kuru': dolarKuru.toFixed(2),
+        'Piyasa Satış Fiyatı (KDV Dahil)': urun['Piyasa Satış Fiyatı (KDV Dahil)'] || '',
+        "Trendyol'da Satılacak Fiyat (KDV Dahil)": urun["Trendyol'da Satılacak Fiyat (KDV Dahil)"] || '',
+        'BuyBox Fiyatı': urun['BuyBox Fiyatı'] || '',
+        'Komisyon Oranı (%)': urun['Komisyon Oranı'] || '',
+        'Son Güncelleme': new Date().toLocaleString('tr-TR')
+      };
+    });
+
+    // Excel workbook oluştur
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Ürünler');
+
+    // Sütun genişliklerini ayarla
+    const colWidths = [
+      { wch: 15 }, // Partner ID
+      { wch: 20 }, // Tedarikçi Stok Kodu
+      { wch: 30 }, // Ürün Adı
+      { wch: 15 }, // Marka
+      { wch: 20 }, // Kategori
+      { wch: 12 }, // Durum
+      { wch: 12 }, // Stok Adedi
+      { wch: 15 }, // Dolar Fiyatı
+      { wch: 15 }, // TL Fiyatı
+      { wch: 15 }, // Dolar Kuru
+      { wch: 20 }, // Piyasa Satış Fiyatı
+      { wch: 25 }, // Trendyol Fiyatı
+      { wch: 15 }, // BuyBox Fiyatı
+      { wch: 15 }, // Komisyon Oranı
+      { wch: 20 }  // Son Güncelleme
+    ];
+    ws['!cols'] = colWidths;
+
+    // Dosyayı indir
+    const fileName = `urunler_guncellenmiş_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   };
 
   return (
@@ -542,10 +580,10 @@ const UrunTablosu = ({ urunler, onUrunUpdate, onUrunUpload }) => {
               <Button
                 variant="contained"
                 startIcon={<DownloadIcon />}
-                onClick={exportToCSV}
+                onClick={exportToExcel}
                 size="small"
               >
-                CSV İndir
+                Excel İndir
               </Button>
             </Box>
           </Grid>
@@ -651,8 +689,12 @@ const UrunTablosu = ({ urunler, onUrunUpdate, onUrunUpload }) => {
       {/* DataGrid */}
       <Paper elevation={3} sx={{ height: 600 }}>
         <DataGrid
-          rows={filteredUrunler.map((urun, index) => ({ ...urun, id: index }))}
+          rows={filteredUrunler.map((urun, index) => ({ 
+            ...urun, 
+            id: `${urun['Tedarikçi Stok Kodu'] || index}_${urun['Ürün Adı'] || index}` 
+          }))}
           columns={columns}
+          getRowId={(row) => row.id}
           initialState={{
             pagination: {
               paginationModel: { pageSize: 25 },

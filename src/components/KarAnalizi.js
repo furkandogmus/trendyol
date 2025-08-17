@@ -6,12 +6,6 @@ import {
   Grid,
   Card,
   CardContent,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Chip,
   Alert,
   FormControl,
@@ -21,6 +15,7 @@ import {
   Tooltip,
   Button
 } from '@mui/material';
+import { DataGrid } from '@mui/x-data-grid';
 import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
@@ -31,6 +26,7 @@ import {
   Download as DownloadIcon
 } from '@mui/icons-material';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
+import * as XLSX from 'xlsx';
 
 const KarAnalizi = ({ urunler, siparisler }) => {
   const [selectedFilter, setSelectedFilter] = useState('all');
@@ -310,78 +306,110 @@ const KarAnalizi = ({ urunler, siparisler }) => {
       .slice(0, 10);
   }, [filteredOrders]);
 
-  const exportToCSV = () => {
-    // Sipariş bazlı CSV
-    const orderCsvData = filteredOrders.map(order => ({
+  const exportToExcel = () => {
+    if (!filteredOrders || filteredOrders.length === 0) {
+      alert('Dışa aktarılacak veri bulunamadı!');
+      return;
+    }
+
+    // Sipariş bazlı veri
+    const orderData = filteredOrders.map(order => ({
       'Sipariş No': order.orderNumber,
-      'Toplam Gelir': order.totalFaturalanacak.toFixed(2),
-      'Toplam Maliyet': order.totalMaliyet.toFixed(2),
-      'Kargo Ücreti': order.kargoUcreti.toFixed(2),
-      'Hizmet Bedeli': order.hizmetBedeli.toFixed(2),
-      'Sarf Bedeli Toplam': order.totalSarf.toFixed(2),
-      'Stopaj': order.stopajTutari.toFixed(2),
-      'Komisyon': order.totalKomisyon.toFixed(2),
-      'Net Kar': order.netKar.toFixed(2),
+      'Toplam Gelir (₺)': order.totalFaturalanacak.toFixed(2),
+      'Toplam Maliyet (₺)': order.totalMaliyet.toFixed(2),
+      'Kargo Ücreti (₺)': order.kargoUcreti.toFixed(2),
+      'Hizmet Bedeli (₺)': order.hizmetBedeli.toFixed(2),
+      'Sarf Bedeli (₺)': order.totalSarf.toFixed(2),
+      'Stopaj (₺)': order.stopajTutari.toFixed(2),
+      'Komisyon (₺)': order.totalKomisyon.toFixed(2),
+      'Net Kar (₺)': order.netKar.toFixed(2),
       'Kar Marjı (%)': order.karMarji.toFixed(2),
       'Toplam Adet': order.totalAdet,
       'Ürün Türü Sayısı': order.itemCount,
-      'Tüm Ürünler Eşleşti': order.hasAllUrunMatch ? 'Evet' : 'Hayır'
+      'Tüm Ürünler Eşleşti': order.hasAllUrunMatch ? 'Evet' : 'Hayır',
+      'Güncel Dolar Kuru': dolarKuru.toFixed(2),
+      'Analiz Tarihi': new Date().toLocaleString('tr-TR')
     }));
 
-    // Ürün bazlı CSV
-    const productCsvData = [];
+    // Ürün bazlı veri
+    const productData = [];
     filteredOrders.forEach(order => {
       order.items.forEach(item => {
-        productCsvData.push({
+        productData.push({
           'Sipariş No': order.orderNumber,
           'Stok Kodu': item['Stok Kodu'] || 'N/A',
           'Ürün Adı': item['Ürün Adı'] || 'N/A',
           'Adet': item.adet,
-          'Birim Gelir': parseFloat(item['Faturalanacak Tutar'] || 0).toFixed(2),
-          'Birim Maliyet': (item.maliyet / item.adet).toFixed(2),
-          'Sipariş Sarf Bedeli': item.sarfBedeliBirim.toFixed(2),
+          'Birim Gelir (₺)': parseFloat(item['Faturalanacak Tutar'] || 0).toFixed(2),
+          'Birim Maliyet (₺)': (item.maliyet / item.adet).toFixed(2),
+          'Sipariş Sarf Bedeli (₺)': item.sarfBedeliBirim.toFixed(2),
           'Magicbox/Cam Sipariş': item.sarfBedeliBirim === 10 ? 'Evet' : 'Hayır',
-          'Komisyon': item.komisyonTutari.toFixed(2),
-          'Ürün Eşleşti': item.hasUrunMatch ? 'Evet' : 'Hayır'
+          'Komisyon (₺)': item.komisyonTutari.toFixed(2),
+          'Ürün Eşleşti': item.hasUrunMatch ? 'Evet' : 'Hayır',
+          'Dolar Fiyatı ($)': item.urun ? parseFloat(item.urun['Dolar Fiyatı'] || 0).toFixed(2) : 'N/A',
+          'Analiz Tarihi': new Date().toLocaleString('tr-TR')
         });
       });
     });
 
-    // Sipariş bazlı CSV oluştur
-    const orderCsvContent = [
-      Object.keys(orderCsvData[0] || {}).join(','),
-      ...orderCsvData.map(row => Object.values(row).join(','))
-    ].join('\n');
+    // Özet veri
+    const summaryData = [{
+      'Metrik': 'Toplam Gelir',
+      'Değer (₺)': stats.totalRevenue.toFixed(2),
+      'Açıklama': 'Tüm siparişlerin toplam faturalanacak tutarı'
+    }, {
+      'Metrik': 'Toplam Maliyet',
+      'Değer (₺)': stats.totalCost.toFixed(2),
+      'Açıklama': 'Ürün maliyeti + komisyon + kargo + hizmet + sarf + stopaj'
+    }, {
+      'Metrik': 'Net Kar',
+      'Değer (₺)': stats.totalProfit.toFixed(2),
+      'Açıklama': 'Toplam gelir - toplam maliyet'
+    }, {
+      'Metrik': 'Kar Marjı',
+      'Değer (₺)': stats.profitMargin.toFixed(2) + '%',
+      'Açıklama': 'Net kar / toplam gelir * 100'
+    }, {
+      'Metrik': 'Toplam Sipariş',
+      'Değer (₺)': stats.totalOrders.toString(),
+      'Açıklama': 'Analiz edilen toplam sipariş sayısı'
+    }, {
+      'Metrik': 'Karlı Sipariş',
+      'Değer (₺)': stats.profitableOrders.toString(),
+      'Açıklama': 'Pozitif kar marjına sahip siparişler'
+    }];
 
-    // Ürün bazlı CSV oluştur
-    const productCsvContent = [
-      Object.keys(productCsvData[0] || {}).join(','),
-      ...productCsvData.map(row => Object.values(row).join(','))
-    ].join('\n');
+    // Excel workbook oluştur
+    const wb = XLSX.utils.book_new();
 
-    // Sipariş bazlı CSV indir
-    const orderBlob = new Blob([orderCsvContent], { type: 'text/csv;charset=utf-8;' });
-    const orderLink = document.createElement('a');
-    const orderUrl = URL.createObjectURL(orderBlob);
-    orderLink.setAttribute('href', orderUrl);
-    orderLink.setAttribute('download', `kar_analizi_siparis_bazli_${new Date().toISOString().split('T')[0]}.csv`);
-    orderLink.style.visibility = 'hidden';
-    document.body.appendChild(orderLink);
-    orderLink.click();
-    document.body.removeChild(orderLink);
+    // Sipariş sayfası
+    const orderWs = XLSX.utils.json_to_sheet(orderData);
+    orderWs['!cols'] = [
+      { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 12 },
+      { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+      { wch: 10 }, { wch: 15 }, { wch: 18 }, { wch: 15 }, { wch: 20 }
+    ];
+    XLSX.utils.book_append_sheet(wb, orderWs, 'Sipariş Analizi');
 
-    // Kısa bir gecikme ile ürün bazlı CSV indir
-    setTimeout(() => {
-      const productBlob = new Blob([productCsvContent], { type: 'text/csv;charset=utf-8;' });
-      const productLink = document.createElement('a');
-      const productUrl = URL.createObjectURL(productBlob);
-      productLink.setAttribute('href', productUrl);
-      productLink.setAttribute('download', `kar_analizi_urun_bazli_${new Date().toISOString().split('T')[0]}.csv`);
-      productLink.style.visibility = 'hidden';
-      document.body.appendChild(productLink);
-      productLink.click();
-      document.body.removeChild(productLink);
-    }, 500);
+    // Ürün sayfası
+    const productWs = XLSX.utils.json_to_sheet(productData);
+    productWs['!cols'] = [
+      { wch: 15 }, { wch: 20 }, { wch: 30 }, { wch: 8 }, { wch: 12 },
+      { wch: 15 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 12 },
+      { wch: 15 }, { wch: 20 }
+    ];
+    XLSX.utils.book_append_sheet(wb, productWs, 'Ürün Detayları');
+
+    // Özet sayfası
+    const summaryWs = XLSX.utils.json_to_sheet(summaryData);
+    summaryWs['!cols'] = [
+      { wch: 20 }, { wch: 15 }, { wch: 50 }
+    ];
+    XLSX.utils.book_append_sheet(wb, summaryWs, 'Özet');
+
+    // Dosyayı indir
+    const fileName = `kar_analizi_detayli_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   };
 
   if (!enrichedSiparisler || enrichedSiparisler.length === 0) {
@@ -407,10 +435,10 @@ const KarAnalizi = ({ urunler, siparisler }) => {
         <Button
           variant="outlined"
           startIcon={<DownloadIcon />}
-          onClick={exportToCSV}
+          onClick={exportToExcel}
           sx={{ ml: 'auto' }}
         >
-          CSV İndir (Sipariş + Ürün)
+          Excel İndir (Detaylı Analiz)
         </Button>
       </Box>
 
@@ -602,42 +630,84 @@ const KarAnalizi = ({ urunler, siparisler }) => {
             <Typography variant="h6" gutterBottom>
               En Karlı Ürünler (Stok Kodu Bazında)
             </Typography>
-            <TableContainer sx={{ maxHeight: 300 }}>
-              <Table stickyHeader size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Stok Kodu</TableCell>
-                    <TableCell align="right">Toplam Kar</TableCell>
-                    <TableCell align="right">Sipariş</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {topProfitableProducts.map((product, index) => (
-                    <TableRow key={product.stockCode}>
-                      <TableCell>
-                        <Tooltip title={product.productName}>
-                          <Chip
-                            label={product.stockCode}
-                            size="small"
-                            color={index < 3 ? 'success' : 'default'}
-                          />
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography
-                          variant="body2"
-                          color={product.totalProfit >= 0 ? 'success.main' : 'error.main'}
-                          fontWeight="bold"
-                        >
-                          ₺{product.totalProfit.toFixed(2)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">{product.orderCount}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <div style={{ height: 300, width: '100%' }}>
+              <DataGrid
+                rows={topProfitableProducts.map((product, index) => ({
+                  id: product.stockCode,
+                  stokKodu: product.stockCode,
+                  urunAdi: product.productName,
+                  toplamKar: product.totalProfit,
+                  siparisAdedi: product.orderCount,
+                  siraNo: index + 1
+                }))}
+                columns={[
+                  {
+                    field: 'siraNo',
+                    headerName: '#',
+                    width: 60,
+                    renderCell: (params) => (
+                      <Chip
+                        label={params.value}
+                        size="small"
+                        color={params.value <= 3 ? 'success' : 'default'}
+                      />
+                    )
+                  },
+                  {
+                    field: 'stokKodu',
+                    headerName: 'Stok Kodu',
+                    width: 180,
+                    renderCell: (params) => (
+                      <Tooltip title={params.row.urunAdi}>
+                        <Chip
+                          label={params.value}
+                          size="small"
+                          color={params.row.siraNo <= 3 ? 'success' : 'default'}
+                        />
+                      </Tooltip>
+                    )
+                  },
+                  {
+                    field: 'toplamKar',
+                    headerName: 'Toplam Kar',
+                    width: 140,
+                    type: 'number',
+                    renderCell: (params) => (
+                      <Typography
+                        variant="body2"
+                        color={params.value >= 0 ? 'success.main' : 'error.main'}
+                        fontWeight="bold"
+                      >
+                        ₺{params.value.toFixed(2)}
+                      </Typography>
+                    )
+                  },
+                  {
+                    field: 'siparisAdedi',
+                    headerName: 'Sipariş Adedi',
+                    width: 120,
+                    type: 'number'
+                  }
+                ]}
+                initialState={{
+                  pagination: {
+                    paginationModel: { pageSize: 10 },
+                  },
+                }}
+                pageSizeOptions={[10, 25]}
+                disableSelectionOnClick
+                hideFooter={topProfitableProducts.length <= 10}
+                sx={{
+                  '& .MuiDataGrid-cell': {
+                    borderBottom: '1px solid #e0e0e0',
+                  },
+                  '& .MuiDataGrid-columnHeaders': {
+                    backgroundColor: '#f5f5f5',
+                    fontWeight: 'bold',
+                  },
+                }}
+              />
+            </div>
           </Paper>
         </Grid>
       </Grid>
@@ -647,105 +717,173 @@ const KarAnalizi = ({ urunler, siparisler }) => {
         <Typography variant="h6" gutterBottom>
           Detaylı Sipariş Kar Analizi
         </Typography>
-        <TableContainer sx={{ maxHeight: 600 }}>
-          <Table stickyHeader>
-            <TableHead>
-              <TableRow>
-                <TableCell>Sipariş No</TableCell>
-                <TableCell align="right">Gelir</TableCell>
-                <TableCell align="right">Maliyet</TableCell>
-                <TableCell align="right">Kargo</TableCell>
-                <TableCell align="right">Hizmet</TableCell>
-                <TableCell align="right">Sarf</TableCell>
-                <TableCell align="right">Stopaj</TableCell>
-                <TableCell align="right">Komisyon</TableCell>
-                <TableCell align="right">Net Kar</TableCell>
-                <TableCell align="right">Kar Marjı</TableCell>
-                <TableCell align="center">Toplam Adet</TableCell>
-                <TableCell align="center">Ürün Türü</TableCell>
-                <TableCell align="center">Durum</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredOrders.slice(0, 50).map((order, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <Chip
-                      label={order.orderNumber}
-                      size="small"
-                      color={order.hasAllUrunMatch ? 'primary' : 'default'}
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    ₺{order.totalFaturalanacak.toFixed(2)}
-                  </TableCell>
-                  <TableCell align="right">
-                    ₺{order.totalMaliyet.toFixed(2)}
-                  </TableCell>
-                  <TableCell align="right">
-                    ₺{order.kargoUcreti.toFixed(2)}
-                  </TableCell>
-                  <TableCell align="right">
-                    ₺{order.hizmetBedeli.toFixed(2)}
-                  </TableCell>
-                  <TableCell align="right">
-                    ₺{order.totalSarf.toFixed(2)}
-                  </TableCell>
-                  <TableCell align="right">
-                    ₺{order.stopajTutari.toFixed(2)}
-                  </TableCell>
-                  <TableCell align="right">
-                    ₺{order.totalKomisyon.toFixed(2)}
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography
-                      variant="body2"
-                      color={order.netKar >= 0 ? 'success.main' : 'error.main'}
-                      fontWeight="bold"
-                    >
-                      ₺{order.netKar.toFixed(2)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography
-                      variant="body2"
-                      color={order.karMarji >= 0 ? 'success.main' : 'error.main'}
-                    >
-                      %{order.karMarji.toFixed(1)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="center">
-                    <Chip
-                      label={order.totalAdet}
-                      size="small"
-                      color="warning"
-                      variant="filled"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <Chip
-                      label={`${order.itemCount} tür`}
-                      size="small"
-                      color="info"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    {order.hasAllUrunMatch ? (
-                      <Chip label="Tam Eşleşme" color="success" size="small" />
-                    ) : (
-                      <Chip label="Eksik Eşleşme" color="error" size="small" />
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        {filteredOrders.length > 50 && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            İlk 50 sipariş gösteriliyor. Toplam {filteredOrders.length} sipariş var.
-          </Typography>
-        )}
+        <div style={{ height: 600, width: '100%' }}>
+          <DataGrid
+            rows={filteredOrders.map((order, index) => ({
+              id: `${order.orderNumber}_${index}`,
+              siparisNo: order.orderNumber,
+              gelir: order.totalFaturalanacak,
+              maliyet: order.totalMaliyet,
+              kargo: order.kargoUcreti,
+              hizmet: order.hizmetBedeli,
+              sarf: order.totalSarf,
+              stopaj: order.stopajTutari,
+              komisyon: order.totalKomisyon,
+              netKar: order.netKar,
+              karMarji: order.karMarji,
+              toplamAdet: order.totalAdet,
+              urunTuru: order.itemCount,
+              durum: order.hasAllUrunMatch,
+              ...order
+            }))}
+            columns={[
+              {
+                field: 'siparisNo',
+                headerName: 'Sipariş No',
+                width: 150,
+                renderCell: (params) => (
+                  <Chip
+                    label={params.value}
+                    size="small"
+                    color={params.row.durum ? 'primary' : 'default'}
+                  />
+                )
+              },
+              {
+                field: 'gelir',
+                headerName: 'Gelir',
+                width: 120,
+                type: 'number',
+                renderCell: (params) => `₺${params.value.toFixed(2)}`
+              },
+              {
+                field: 'maliyet',
+                headerName: 'Maliyet',
+                width: 120,
+                type: 'number',
+                renderCell: (params) => `₺${params.value.toFixed(2)}`
+              },
+              {
+                field: 'kargo',
+                headerName: 'Kargo',
+                width: 100,
+                type: 'number',
+                renderCell: (params) => `₺${params.value.toFixed(2)}`
+              },
+              {
+                field: 'hizmet',
+                headerName: 'Hizmet',
+                width: 100,
+                type: 'number',
+                renderCell: (params) => `₺${params.value.toFixed(2)}`
+              },
+              {
+                field: 'sarf',
+                headerName: 'Sarf',
+                width: 100,
+                type: 'number',
+                renderCell: (params) => `₺${params.value.toFixed(2)}`
+              },
+              {
+                field: 'stopaj',
+                headerName: 'Stopaj',
+                width: 100,
+                type: 'number',
+                renderCell: (params) => `₺${params.value.toFixed(2)}`
+              },
+              {
+                field: 'komisyon',
+                headerName: 'Komisyon',
+                width: 120,
+                type: 'number',
+                renderCell: (params) => `₺${params.value.toFixed(2)}`
+              },
+              {
+                field: 'netKar',
+                headerName: 'Net Kar',
+                width: 120,
+                type: 'number',
+                renderCell: (params) => (
+                  <Typography
+                    variant="body2"
+                    color={params.value >= 0 ? 'success.main' : 'error.main'}
+                    fontWeight="bold"
+                  >
+                    ₺{params.value.toFixed(2)}
+                  </Typography>
+                )
+              },
+              {
+                field: 'karMarji',
+                headerName: 'Kar Marjı',
+                width: 120,
+                type: 'number',
+                renderCell: (params) => (
+                  <Typography
+                    variant="body2"
+                    color={params.value >= 0 ? 'success.main' : 'error.main'}
+                  >
+                    %{params.value.toFixed(1)}
+                  </Typography>
+                )
+              },
+              {
+                field: 'toplamAdet',
+                headerName: 'Toplam Adet',
+                width: 120,
+                type: 'number',
+                renderCell: (params) => (
+                  <Chip
+                    label={params.value}
+                    size="small"
+                    color="warning"
+                    variant="filled"
+                  />
+                )
+              },
+              {
+                field: 'urunTuru',
+                headerName: 'Ürün Türü',
+                width: 120,
+                renderCell: (params) => (
+                  <Chip
+                    label={`${params.value} tür`}
+                    size="small"
+                    color="info"
+                  />
+                )
+              },
+              {
+                field: 'durum',
+                headerName: 'Durum',
+                width: 140,
+                renderCell: (params) => (
+                  params.value ? (
+                    <Chip label="Tam Eşleşme" color="success" size="small" />
+                  ) : (
+                    <Chip label="Eksik Eşleşme" color="error" size="small" />
+                  )
+                )
+              }
+            ]}
+            initialState={{
+              pagination: {
+                paginationModel: { pageSize: 25 },
+              },
+            }}
+            pageSizeOptions={[25, 50, 100]}
+            disableSelectionOnClick
+            sx={{
+              '& .MuiDataGrid-cell': {
+                borderBottom: '1px solid #e0e0e0',
+              },
+              '& .MuiDataGrid-columnHeaders': {
+                backgroundColor: '#f5f5f5',
+                fontWeight: 'bold',
+              },
+            }}
+          />
+        </div>
       </Paper>
     </Box>
   );
