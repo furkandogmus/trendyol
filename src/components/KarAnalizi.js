@@ -604,23 +604,51 @@ const KarAnalizi = ({ urunler, siparisler }) => {
             <Typography variant="h6" gutterBottom>
               Kargo Ücreti Dağılımı
             </Typography>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={350}>
               <PieChart>
                 <Pie
                   data={cargoDistribution}
                   cx="50%"
-                  cy="50%"
-                  outerRadius={80}
+                  cy="45%"
+                  outerRadius={90}
+                  innerRadius={30}
                   fill="#8884d8"
                   dataKey="value"
-                  label={({ name, value }) => `${value} sipariş`}
+                  label={false}
+                  labelLine={false}
+                  paddingAngle={2}
+                  stroke="#fff"
+                  strokeWidth={2}
                 >
                   {cargoDistribution.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <RechartsTooltip />
-                <Legend />
+                <RechartsTooltip 
+                  formatter={(value, name, props) => [
+                    `${value} sipariş (${((value / cargoDistribution.reduce((sum, item) => sum + item.value, 0)) * 100).toFixed(1)}%)`,
+                    'Adet'
+                  ]}
+                  labelFormatter={(label) => `Kargo Ücreti: ${label}`}
+                  contentStyle={{ 
+                    backgroundColor: '#fff', 
+                    border: '1px solid #ccc', 
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    fontSize: '13px',
+                    fontWeight: '500'
+                  }}
+                />
+                <Legend 
+                  verticalAlign="bottom"
+                  height={40}
+                  iconType="circle"
+                  wrapperStyle={{ 
+                    fontSize: '12px', 
+                    paddingTop: '15px',
+                    fontWeight: '500'
+                  }}
+                />
               </PieChart>
             </ResponsiveContainer>
           </Paper>
@@ -632,7 +660,7 @@ const KarAnalizi = ({ urunler, siparisler }) => {
             <Typography variant="h6" gutterBottom>
               En Karlı Ürünler (Stok Kodu Bazında)
             </Typography>
-            <div style={{ height: 300, width: '100%' }}>
+            <div style={{ height: 350, width: '100%' }}>
               <DataGrid
                 rows={topProfitableProducts.map((product, index) => ({
                   id: product.stockCode,

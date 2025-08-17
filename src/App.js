@@ -96,11 +96,6 @@ function App() {
   };
 
   const handleSiparisUpdate = (originalSiparis, updatedSiparis) => {
-    console.log('App.js - handleSiparisUpdate çağrıldı');
-    console.log('originalSiparis:', originalSiparis);
-    console.log('updatedSiparis:', updatedSiparis);
-    console.log('mevcut siparisler:', siparisler);
-    
     // Benzersiz alan kombinasyonu ile siparişi bul ve güncelle
     const updatedSiparisler = siparisler.map(siparis => {
       // Paket No + Sipariş Numarası kombinasyonu unique olmalı
@@ -111,13 +106,11 @@ function App() {
       
       if ((originalPaketNo && currentPaketNo === originalPaketNo) ||
           (originalSiparisNo && currentSiparisNo === originalSiparisNo)) {
-        console.log('Eşleşen sipariş bulundu, güncelleniyor:', siparis);
         return { ...updatedSiparis };
       }
       return siparis;
     });
     
-    console.log('Güncellenmiş siparişler:', updatedSiparisler);
     setSiparisler(updatedSiparisler);
     setSnackbar({
       open: true,

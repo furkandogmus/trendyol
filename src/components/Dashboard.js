@@ -266,19 +266,21 @@ const Dashboard = ({ urunler }) => {
                 </Typography>
               </Box>
               {durumChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer width="100%" height={380}>
                   <PieChart>
                     <Pie
                       data={durumChartData}
                       cx="50%"
                       cy="45%"
                       labelLine={false}
-                      label={({ durum, percent }) => percent > 8 ? `${(percent * 100).toFixed(0)}%` : ''}
-                      outerRadius={85}
-                      innerRadius={35}
+                      label={({ durum, percent }) => percent > 5 ? `${(percent * 100).toFixed(0)}%` : ''}
+                      outerRadius={120}
+                      innerRadius={45}
                       fill="#8884d8"
                       dataKey="count"
-                      paddingAngle={1}
+                      paddingAngle={2}
+                      stroke="#fff"
+                      strokeWidth={2}
                     >
                       {durumChartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -287,17 +289,28 @@ const Dashboard = ({ urunler }) => {
                     <Tooltip 
                       formatter={(value, name) => [`${value} ürün`, 'Adet']}
                       labelFormatter={(label) => `Durum: ${label}`}
+                      contentStyle={{ 
+                        backgroundColor: '#fff', 
+                        border: '1px solid #ccc', 
+                        borderRadius: '8px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        fontSize: '13px'
+                      }}
                     />
                     <Legend 
                       verticalAlign="bottom" 
-                      height={30}
+                      height={40}
                       iconType="circle"
-                      wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
+                      wrapperStyle={{ 
+                        fontSize: '12px', 
+                        paddingTop: '15px',
+                        fontWeight: '500'
+                      }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 280 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 380 }}>
                   <Typography variant="body2" color="text.secondary">
                     Veri bulunamadı
                   </Typography>
@@ -318,42 +331,56 @@ const Dashboard = ({ urunler }) => {
                 </Typography>
               </Box>
               {markaChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer width="100%" height={380}>
                   <BarChart 
                     data={markaChartData} 
-                    margin={{ top: 15, right: 20, left: 20, bottom: 45 }}
+                    margin={{ top: 20, right: 30, left: 30, bottom: 60 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <CartesianGrid 
+                      strokeDasharray="3 3" 
+                      stroke="#e0e0e0" 
+                      horizontal={true}
+                      vertical={false}
+                    />
                     <XAxis 
                       dataKey="marka" 
                       angle={-35}
                       textAnchor="end"
-                      height={60}
+                      height={80}
                       interval={0}
-                      fontSize={10}
-                      tick={{ fill: '#666' }}
+                      fontSize={11}
+                      tick={{ fill: '#555', fontWeight: '500' }}
+                      axisLine={{ stroke: '#ccc', strokeWidth: 1 }}
                     />
                     <YAxis 
-                      fontSize={10}
-                      tick={{ fill: '#666' }}
-                      width={35}
+                      fontSize={11}
+                      tick={{ fill: '#555', fontWeight: '500' }}
+                      width={45}
+                      axisLine={{ stroke: '#ccc', strokeWidth: 1 }}
                     />
                     <Tooltip 
                       formatter={(value, name) => [`${value} ürün`, 'Adet']}
                       labelFormatter={(label) => `Marka: ${label}`}
-                      contentStyle={{ backgroundColor: '#f5f5f5', border: '1px solid #ccc', fontSize: '12px' }}
+                      contentStyle={{ 
+                        backgroundColor: '#fff', 
+                        border: '1px solid #ccc', 
+                        borderRadius: '8px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        fontSize: '13px',
+                        fontWeight: '500'
+                      }}
                     />
                     <Bar 
                       dataKey="count" 
                       fill="#1976d2" 
-                      radius={[3, 3, 0, 0]}
+                      radius={[4, 4, 0, 0]}
                       stroke="#0d47a1"
-                      strokeWidth={0.5}
+                      strokeWidth={1}
                     />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 280 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 380 }}>
                   <Typography variant="body2" color="text.secondary">
                     Veri bulunamadı
                   </Typography>
@@ -375,46 +402,58 @@ const Dashboard = ({ urunler }) => {
               </Box>
               
               {kategoriChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={400}>
                   <BarChart 
                     data={kategoriChartData} 
-                    margin={{ top: 15, right: 20, left: 80, bottom: 20 }}
+                    margin={{ top: 20, right: 40, left: 120, bottom: 30 }}
                     layout="horizontal"
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <CartesianGrid 
+                      strokeDasharray="3 3" 
+                      stroke="#e0e0e0"
+                      horizontal={false}
+                      vertical={true}
+                    />
                     <XAxis 
                       type="number"
-                      fontSize={10}
-                      tick={{ fill: '#666' }}
-                      axisLine={false}
-                      tickLine={false}
+                      fontSize={11}
+                      tick={{ fill: '#555', fontWeight: '500' }}
+                      axisLine={{ stroke: '#ccc', strokeWidth: 1 }}
+                      tickLine={{ stroke: '#ccc' }}
                     />
                     <YAxis 
                       type="category"
                       dataKey="kategori" 
-                      fontSize={10}
-                      tick={{ fill: '#666' }}
-                      width={75}
+                      fontSize={11}
+                      tick={{ fill: '#555', fontWeight: '500' }}
+                      width={110}
                       interval={0}
-                      axisLine={false}
-                      tickLine={false}
+                      axisLine={{ stroke: '#ccc', strokeWidth: 1 }}
+                      tickLine={{ stroke: '#ccc' }}
                     />
                     <Tooltip 
                       formatter={(value, name) => [`${value} ürün`, 'Adet']}
                       labelFormatter={(label) => `Kategori: ${label}`}
-                      contentStyle={{ backgroundColor: '#f5f5f5', border: '1px solid #ccc', fontSize: '12px' }}
+                      contentStyle={{ 
+                        backgroundColor: '#fff', 
+                        border: '1px solid #ccc', 
+                        borderRadius: '8px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        fontSize: '13px',
+                        fontWeight: '500'
+                      }}
                     />
                     <Bar 
                       dataKey="count" 
                       fill="#2e7d32" 
-                      radius={[0, 3, 3, 0]}
+                      radius={[0, 4, 4, 0]}
                       stroke="#1b5e20"
-                      strokeWidth={0.5}
+                      strokeWidth={1}
                     />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
                   <Typography variant="body2" color="text.secondary">
                     Kategori verisi bulunamadı
                   </Typography>

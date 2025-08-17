@@ -157,16 +157,8 @@ const SiparisTablosu = ({ siparisler, onSiparisUpdate, onSiparisAdd, onSiparisUp
 
   // Değişiklikleri kaydet
   const handleSaveChanges = () => {
-    console.log('SiparisTablosu - handleSaveChanges çağrıldı');
-    console.log('editingSiparis:', editingSiparis);
-    console.log('editForm:', editForm);
-    console.log('onSiparisUpdate function:', onSiparisUpdate);
-    
     if (onSiparisUpdate) {
       onSiparisUpdate(editingSiparis, editForm);
-      console.log('onSiparisUpdate çağrıldı');
-    } else {
-      console.log('onSiparisUpdate mevcut değil!');
     }
     handleCloseEditDialog();
   };
