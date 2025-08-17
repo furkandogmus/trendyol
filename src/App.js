@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   ThemeProvider,
   createTheme,
@@ -9,175 +9,240 @@ import {
   Paper,
   Button,
   Alert,
-  Snackbar
+  Snackbar,
+  IconButton
 } from '@mui/material';
 import {
   Analytics as AnalyticsIcon,
   ShoppingCart as ShoppingCartIcon,
   Inventory as InventoryIcon,
-  Assessment as AssessmentIcon
+  Assessment as AssessmentIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
+
+// Trendyol Components
 import UrunTablosu from './components/UrunTablosu';
 import SiparisTablosu from './components/SiparisTablosu';
 import KarAnalizi from './components/KarAnalizi';
 import Dashboard from './components/Dashboard';
 
+// Hepsiburada Components
+import HepsiburadaDashboard from './components/HepsiburadaDashboard';
+import HepsiburadaUrunTablosu from './components/HepsiburadaUrunTablosu';
+import HepsiburadaSiparisTablosu from './components/HepsiburadaSiparisTablosu';
+import HepsiburadaKarAnalizi from './components/HepsiburadaKarAnalizi';
 
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-    background: {
-      default: '#f5f5f5',
-    },
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h4: {
-      fontWeight: 600,
-    },
-  },
-});
+// Platform Components
+import PlatformSelector from './components/PlatformSelector';
+import { PlatformProvider, usePlatform } from './contexts/PlatformContext';
 
-function App() {
-  const [urunler, setUrunler] = useState(() => {
-    const saved = localStorage.getItem('urunler');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [siparisler, setSiparisler] = useState(() => {
-    const saved = localStorage.getItem('siparisler');
-    return saved ? JSON.parse(saved) : [];
-  });
+
+
+// Platform temasını dinamik olarak ayarla
+const getPlatformTheme = (platform) => {
+  const baseTheme = {
+    palette: {
+      mode: 'light',
+      background: {
+        default: '#f5f5f5',
+      },
+    },
+    typography: {
+      fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+      h4: {
+        fontWeight: 600,
+      },
+    },
+  };
+
+  if (platform === 'hepsiburada') {
+    return createTheme({
+      ...baseTheme,
+      palette: {
+        ...baseTheme.palette,
+        primary: {
+          main: '#ff6000',
+          light: '#ff8f50',
+          dark: '#cc4d00',
+        },
+        secondary: {
+          main: '#1976d2',
+        },
+      },
+    });
+  } else if (platform === 'trendyol') {
+    return createTheme({
+      ...baseTheme,
+      palette: {
+        ...baseTheme.palette,
+        primary: {
+          main: '#f27a1a',
+        },
+        secondary: {
+          main: '#dc004e',
+        },
+      },
+    });
+  }
+
+  return createTheme(baseTheme);
+};
+
+// Ana Platform Bileşeni
+const PlatformApp = () => {
+  const {
+    currentPlatform,
+    setCurrentPlatform,
+    urunler,
+    siparisler,
+    handleUrunUpload,
+    handleSiparisUpload,
+    handleUrunUpdate,
+    handleSiparisUpdate,
+    handleSiparisAdd
+  } = usePlatform();
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-  // localStorage persistence
-  useEffect(() => {
-    localStorage.setItem('urunler', JSON.stringify(urunler));
-  }, [urunler]);
-
-  useEffect(() => {
-    localStorage.setItem('siparisler', JSON.stringify(siparisler));
-  }, [siparisler]);
-
-  const handleUrunUpload = (data) => {
-    setUrunler(data);
-    setSnackbar({
-      open: true,
-      message: `${data.length} ürün başarıyla yüklendi!`,
-      severity: 'success'
-    });
-  };
-
-  const handleSiparisUpload = (data) => {
-    setSiparisler(data);
-    setSnackbar({
-      open: true,
-      message: `${data.length} sipariş başarıyla yüklendi!`,
-      severity: 'success'
-    });
-  };
-
-  const handleUrunUpdate = (originalUrun, updatedUrun) => {
-    // Benzersiz alan kombinasyonu ile ürünü bul ve güncelle
-    const updatedUrunler = urunler.map(urun => {
-      // Tedarikçi Stok Kodu + Ürün Adı kombinasyonu unique olmalı
-      if (urun['Tedarikçi Stok Kodu'] === originalUrun['Tedarikçi Stok Kodu'] && 
-          urun['Ürün Adı'] === originalUrun['Ürün Adı']) {
-        return { ...updatedUrun };
-      }
-      return urun;
-    });
-    
-    setUrunler(updatedUrunler);
-    setSnackbar({
-      open: true,
-      message: 'Ürün başarıyla güncellendi!',
-      severity: 'success'
-    });
-  };
-
-  const handleSiparisUpdate = (originalSiparis, updatedSiparis) => {
-    // Benzersiz alan kombinasyonu ile siparişi bul ve güncelle
-    const updatedSiparisler = siparisler.map(siparis => {
-      // Paket No + Sipariş Numarası kombinasyonu unique olmalı
-      const originalPaketNo = originalSiparis['Paket No'] || originalSiparis['Sipariş Numarası'] || '';
-      const currentPaketNo = siparis['Paket No'] || siparis['Sipariş Numarası'] || '';
-      const originalSiparisNo = originalSiparis['Sipariş Numarası'] || originalSiparis['Paket No'] || '';
-      const currentSiparisNo = siparis['Sipariş Numarası'] || siparis['Paket No'] || '';
-      
-      if ((originalPaketNo && currentPaketNo === originalPaketNo) ||
-          (originalSiparisNo && currentSiparisNo === originalSiparisNo)) {
-        return { ...updatedSiparis };
-      }
-      return siparis;
-    });
-    
-    setSiparisler(updatedSiparisler);
-    setSnackbar({
-      open: true,
-      message: 'Sipariş başarıyla güncellendi!',
-      severity: 'success'
-    });
-  };
-
-  const handleSiparisAdd = (newSiparis) => {
-    setSiparisler(prev => [...prev, newSiparis]);
-    setSnackbar({
-      open: true,
-      message: 'Yeni sipariş başarıyla eklendi!',
-      severity: 'success'
-    });
+  const showSnackbar = (message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity });
   };
 
   const handleSnackbarClose = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
+  const onUrunUploadWithSnackbar = (data) => {
+    handleUrunUpload(data);
+    showSnackbar(`${data.length} ürün başarıyla yüklendi!`);
+  };
+
+  const onSiparisUploadWithSnackbar = (data) => {
+    handleSiparisUpload(data);
+    showSnackbar(`${data.length} sipariş başarıyla yüklendi!`);
+  };
+
+  const onUrunUpdateWithSnackbar = (originalUrun, updatedUrun) => {
+    handleUrunUpdate(originalUrun, updatedUrun);
+    showSnackbar('Ürün başarıyla güncellendi!');
+  };
+
+  const onSiparisUpdateWithSnackbar = (originalSiparis, updatedSiparis) => {
+    handleSiparisUpdate(originalSiparis, updatedSiparis);
+    showSnackbar('Sipariş başarıyla güncellendi!');
+  };
+
+  const onSiparisAddWithSnackbar = (newSiparis) => {
+    handleSiparisAdd(newSiparis);
+    showSnackbar('Yeni sipariş başarıyla eklendi!');
+  };
+
   const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard urunler={urunler} />;
-      case 'urunler':
-        return <UrunTablosu 
-          urunler={urunler} 
-          onUrunUpdate={handleUrunUpdate}
-          onUrunUpload={handleUrunUpload}
-        />;
-      case 'siparisler':
-        return <SiparisTablosu 
-          siparisler={siparisler} 
-          onSiparisUpdate={handleSiparisUpdate}
-          onSiparisAdd={handleSiparisAdd}
-          onSiparisUpload={handleSiparisUpload}
-        />;
-      case 'kar-analizi':
-        return <KarAnalizi urunler={urunler} siparisler={siparisler} />;
-      default:
-        return <Dashboard urunler={urunler} />;
+    if (currentPlatform === 'hepsiburada') {
+      switch (activeTab) {
+        case 'dashboard':
+          return <HepsiburadaDashboard urunler={urunler} siparisler={siparisler} />;
+        case 'urunler':
+          return <HepsiburadaUrunTablosu 
+            urunler={urunler} 
+            onUrunUpdate={onUrunUpdateWithSnackbar}
+            onUrunUpload={onUrunUploadWithSnackbar}
+          />;
+        case 'siparisler':
+          return <HepsiburadaSiparisTablosu 
+            siparisler={siparisler} 
+            onSiparisUpdate={onSiparisUpdateWithSnackbar}
+            onSiparisAdd={onSiparisAddWithSnackbar}
+            onSiparisUpload={onSiparisUploadWithSnackbar}
+          />;
+        case 'kar-analizi':
+          return <HepsiburadaKarAnalizi 
+            urunler={urunler} 
+            siparisler={siparisler}
+            urunMaliyetleri={
+              urunler.reduce((acc, urun) => {
+                const stokKodu = urun['Satıcı Stok Kodu'];
+                const dolarFiyat = parseFloat(urun['Dolar Fiyatı'] || 0);
+                const dolarKuru = parseFloat(localStorage.getItem('hb_dolar_kuru') || '42.0');
+                const tlMaliyet = dolarFiyat * dolarKuru;
+                if (stokKodu) {
+                  acc[stokKodu] = tlMaliyet;
+                }
+                return acc;
+              }, {})
+            }
+          />;
+        default:
+          return <HepsiburadaDashboard urunler={urunler} siparisler={siparisler} />;
+      }
+    } else {
+      switch (activeTab) {
+        case 'dashboard':
+          return <Dashboard urunler={urunler} />;
+        case 'urunler':
+          return <UrunTablosu 
+            urunler={urunler} 
+            onUrunUpdate={onUrunUpdateWithSnackbar}
+            onUrunUpload={onUrunUploadWithSnackbar}
+          />;
+        case 'siparisler':
+          return <SiparisTablosu 
+            siparisler={siparisler} 
+            onSiparisUpdate={onSiparisUpdateWithSnackbar}
+            onSiparisAdd={onSiparisAddWithSnackbar}
+            onSiparisUpload={onSiparisUploadWithSnackbar}
+          />;
+        case 'kar-analizi':
+          return <KarAnalizi urunler={urunler} siparisler={siparisler} />;
+        default:
+          return <Dashboard urunler={urunler} />;
+      }
     }
   };
 
+  const getPlatformName = () => {
+    return currentPlatform === 'hepsiburada' ? 'Hepsiburada' : 'Trendyol';
+  };
+
+  const getPlatformIcon = () => {
+    return currentPlatform === 'hepsiburada' ? '🛒' : '🛍️';
+  };
+
+  if (!currentPlatform) {
+    return <PlatformSelector onPlatformSelect={setCurrentPlatform} />;
+  }
+
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={getPlatformTheme(currentPlatform)}>
       <CssBaseline />
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
         {/* Header */}
         <Paper elevation={2} sx={{ mb: 3 }}>
           <Container maxWidth="xl">
-            <Box sx={{ py: 3 }}>
-              <Typography variant="h4" component="h1" gutterBottom color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <AnalyticsIcon sx={{ fontSize: 36 }} />
-                Ürün & Sipariş Takip Sistemi
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Excel verilerinizi yükleyin, ürünlerinizi düzenleyin, siparişlerinizi takip edin
-              </Typography>
+            <Box sx={{ py: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box>
+                <Typography variant="h4" component="h1" gutterBottom color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <span>{getPlatformIcon()}</span>
+                  {getPlatformName()} - Sipariş Takip Sistemi
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Excel verilerinizi yükleyin, ürünlerinizi düzenleyin, siparişlerinizi takip edin
+                </Typography>
+              </Box>
+              <IconButton 
+                onClick={() => setCurrentPlatform(null)}
+                color="primary"
+                sx={{ 
+                  bgcolor: 'primary.main', 
+                  color: 'white',
+                  '&:hover': {
+                    bgcolor: 'primary.dark'
+                  }
+                }}
+              >
+                <ArrowBackIcon />
+              </IconButton>
             </Box>
           </Container>
         </Paper>
@@ -240,6 +305,14 @@ function App() {
         </Snackbar>
       </Box>
     </ThemeProvider>
+  );
+};
+
+function App() {
+  return (
+    <PlatformProvider>
+      <PlatformApp />
+    </PlatformProvider>
   );
 }
 

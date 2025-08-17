@@ -13,8 +13,9 @@ import {
 } from '@mui/material';
 import { Upload as UploadIcon, InsertDriveFile as ExcelIcon } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
 
-const ExcelUploader = ({ onUpload, onUploadSuccess }) => {
+const ExcelUploader = ({ onUpload, onUploadSuccess, platform = 'trendyol', ...otherProps }) => {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -23,13 +24,16 @@ const ExcelUploader = ({ onUpload, onUploadSuccess }) => {
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0];
     if (selectedFile) {
-      if (selectedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-          selectedFile.type === 'application/vnd.ms-excel') {
+      const isExcel = selectedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                     selectedFile.type === 'application/vnd.ms-excel';
+      const isCsv = selectedFile.type === 'text/csv' || selectedFile.name.toLowerCase().endsWith('.csv');
+      
+      if (isExcel || isCsv) {
         setFile(selectedFile);
         setError('');
         setPreview(null);
       } else {
-        setError('Lütfen geçerli bir Excel dosyası (.xlsx veya .xls) seçin.');
+        setError('Lütfen geçerli bir Excel dosyası (.xlsx, .xls) veya CSV dosyası (.csv) seçin.');
         setFile(null);
       }
     }
@@ -42,7 +46,7 @@ const ExcelUploader = ({ onUpload, onUploadSuccess }) => {
     setError('');
 
     try {
-      const data = await readExcelFile(file);
+      const data = await readFile(file);
       
       // Her iki prop'u da destekle
       if (onUploadSuccess) {
@@ -66,40 +70,76 @@ const ExcelUploader = ({ onUpload, onUploadSuccess }) => {
     }
   };
 
-  const readExcelFile = (file) => {
+  const readFile = (file) => {
     return new Promise((resolve, reject) => {
-      const reader = new FileReader();
+      const isCSV = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv');
       
-      reader.onload = (e) => {
-        try {
-          const data = e.target.result;
-          const workbook = XLSX.read(data, { type: 'binary' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-          
-          // İlk satırı başlık olarak kullan
-          const headers = jsonData[0];
-          const rows = jsonData.slice(1);
-          
-          const processedData = rows.map(row => {
-            const obj = {};
-            headers.forEach((header, index) => {
-              if (header) {
-                obj[header] = row[index] || '';
-              }
-            });
-            return obj;
-          }).filter(row => Object.values(row).some(value => value !== ''));
-          
-          resolve(processedData);
-        } catch (error) {
-          reject(error);
-        }
-      };
-      
-      reader.onerror = () => reject(new Error('Dosya okunamadı'));
-      reader.readAsBinaryString(file);
+      if (isCSV) {
+        // CSV dosyası okuma
+        Papa.parse(file, {
+          header: false,
+          complete: (results) => {
+            try {
+              const jsonData = results.data;
+              const headers = jsonData[0];
+              const rows = jsonData.slice(1);
+              
+              const processedData = rows.map(row => {
+                const obj = {};
+                headers.forEach((header, index) => {
+                  if (header) {
+                    obj[header] = row[index] || '';
+                  }
+                });
+                return obj;
+              }).filter(row => Object.values(row).some(value => value !== ''));
+              
+              resolve(processedData);
+            } catch (error) {
+              reject(error);
+            }
+          },
+          error: (error) => {
+            reject(error);
+          }
+        });
+      } else {
+        // Excel dosyası okuma
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+          try {
+            const data = e.target.result;
+            const workbook = XLSX.read(data, { type: 'binary' });
+            // Hepsiburada için 1. sayfa (index 1), Trendyol için 0. sayfa (index 0)
+            const sheetIndex = platform === 'hepsiburada' ? 1 : 0;
+            const sheetName = workbook.SheetNames[sheetIndex];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            // İlk satırı başlık olarak kullan
+            const headers = jsonData[0];
+            const rows = jsonData.slice(1);
+            
+            const processedData = rows.map(row => {
+              const obj = {};
+              headers.forEach((header, index) => {
+                if (header) {
+                  obj[header] = row[index] || '';
+                }
+              });
+              return obj;
+            }).filter(row => Object.values(row).some(value => value !== ''));
+            
+            resolve(processedData);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        
+        reader.onerror = () => reject(new Error('Dosya okunamadı'));
+        reader.readAsBinaryString(file);
+      }
     });
   };
 
@@ -150,11 +190,11 @@ const ExcelUploader = ({ onUpload, onUploadSuccess }) => {
               Excel Dosyasını Seçin veya Sürükleyin
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              .xlsx veya .xls formatında sipariş verilerinizi yükleyin
+              Excel (.xlsx, .xls) veya CSV (.csv) formatında verilerinizi yükleyin
             </Typography>
             
             <input
-              accept=".xlsx,.xls"
+              accept=".xlsx,.xls,.csv"
               style={{ display: 'none' }}
               id="excel-file-input"
               type="file"
