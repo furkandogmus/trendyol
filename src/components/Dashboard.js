@@ -29,7 +29,7 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 const Dashboard = ({ urunler }) => {
-  const [dolarKuru, setDolarKuru] = useState(30.0);
+  const [dolarKuru, setDolarKuru] = useState(42.0);
   const [dolarKuruDialogOpen, setDolarKuruDialogOpen] = useState(false);
   const [dolarKuruForm, setDolarKuruForm] = useState({
     yeniKur: '42.00'

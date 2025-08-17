@@ -157,8 +157,16 @@ const SiparisTablosu = ({ siparisler, onSiparisUpdate, onSiparisAdd, onSiparisUp
 
   // Değişiklikleri kaydet
   const handleSaveChanges = () => {
+    console.log('SiparisTablosu - handleSaveChanges çağrıldı');
+    console.log('editingSiparis:', editingSiparis);
+    console.log('editForm:', editForm);
+    console.log('onSiparisUpdate function:', onSiparisUpdate);
+    
     if (onSiparisUpdate) {
       onSiparisUpdate(editingSiparis, editForm);
+      console.log('onSiparisUpdate çağrıldı');
+    } else {
+      console.log('onSiparisUpdate mevcut değil!');
     }
     handleCloseEditDialog();
   };
@@ -532,6 +540,8 @@ const SiparisTablosu = ({ siparisler, onSiparisUpdate, onSiparisAdd, onSiparisUp
       return;
     }
 
+
+
     // Sipariş verilerini Excel için hazırla
     const exportData = filteredSiparisler.map(siparis => {
       const satısTutari = parseFloat(siparis['Satış Tutarı'] || 0);
@@ -541,6 +551,7 @@ const SiparisTablosu = ({ siparisler, onSiparisUpdate, onSiparisAdd, onSiparisUp
       const komisyonTutari = faturalanacakTutar * (komisyonOrani / 100);
       
       return {
+        'Sipariş Numarası': siparis['Sipariş Numarası'] || siparis['Paket No'] || '',
         'Barkod': siparis['Barkod'] || '',
         'Paket No': siparis['Paket No'] || '',
         'Sipariş Tarihi': siparis['Sipariş Tarihi'] || '',
@@ -550,12 +561,12 @@ const SiparisTablosu = ({ siparisler, onSiparisUpdate, onSiparisAdd, onSiparisUp
         'Ürün Adı': siparis['Ürün Adı'] || '',
         'Sipariş Statüsü': siparis['Sipariş Statüsü'] || '',
         'Adet': siparis['Adet'] || '',
-        'Birim Fiyatı (₺)': parseFloat(siparis['Birim Fiyatı'] || 0).toFixed(2),
-        'Satış Tutarı (₺)': satısTutari.toFixed(2),
-        'İndirim Tutarı (₺)': indirimTutari.toFixed(2),
-        'Faturalanacak Tutar (₺)': faturalanacakTutar.toFixed(2),
-        'Komisyon Oranı (%)': komisyonOrani.toFixed(2),
-        'Komisyon Tutarı (₺)': komisyonTutari.toFixed(2),
+        'Birim Fiyatı': parseFloat(siparis['Birim Fiyatı'] || 0).toFixed(2),
+        'Satış Tutarı': satısTutari.toFixed(2),
+        'İndirim Tutarı': indirimTutari.toFixed(2),
+        'Faturalanacak Tutar': faturalanacakTutar.toFixed(2),
+        'Komisyon Oranı': komisyonOrani.toFixed(2),
+        'Komisyon Tutarı': komisyonTutari.toFixed(2),
         'Kargo Firması': siparis['Kargo Firması'] || '',
         'Kargo Kodu': siparis['Kargo Kodu'] || '',
         'Teslim Tarihi': siparis['Teslim Tarihi'] || '',
@@ -598,6 +609,84 @@ const SiparisTablosu = ({ siparisler, onSiparisUpdate, onSiparisAdd, onSiparisUp
 
     // Dosyayı indir
     const fileName = `siparisler_guncellenmiş_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  };
+
+  const exportAllToExcel = () => {
+    if (!siparisler || siparisler.length === 0) {
+      alert('Dışa aktarılacak veri bulunamadı!');
+      return;
+    }
+
+
+
+    // Sipariş verilerini Excel için hazırla (TÜM SİPARİŞLER)
+    const exportData = siparisler.map(siparis => {
+      const satısTutari = parseFloat(siparis['Satış Tutarı'] || 0);
+      const indirimTutari = parseFloat(siparis['İndirim Tutarı'] || 0);
+      const faturalanacakTutar = parseFloat(siparis['Faturalanacak Tutar'] || 0);
+      const komisyonOrani = parseFloat(siparis['Komisyon Oranı'] || 0);
+      const komisyonTutari = faturalanacakTutar * (komisyonOrani / 100);
+      
+      return {
+        'Sipariş Numarası': siparis['Sipariş Numarası'] || siparis['Paket No'] || '',
+        'Barkod': siparis['Barkod'] || '',
+        'Paket No': siparis['Paket No'] || '',
+        'Sipariş Tarihi': siparis['Sipariş Tarihi'] || '',
+        'Alıcı': siparis['Alıcı'] || '',
+        'İl': siparis['İl'] || '',
+        'İlçe': siparis['İlçe'] || '',
+        'Ürün Adı': siparis['Ürün Adı'] || '',
+        'Sipariş Statüsü': siparis['Sipariş Statüsü'] || '',
+        'Adet': siparis['Adet'] || '',
+        'Birim Fiyatı': parseFloat(siparis['Birim Fiyatı'] || 0).toFixed(2),
+        'Satış Tutarı': satısTutari.toFixed(2),
+        'İndirim Tutarı': indirimTutari.toFixed(2),
+        'Faturalanacak Tutar': faturalanacakTutar.toFixed(2),
+        'Komisyon Oranı': komisyonOrani.toFixed(2),
+        'Komisyon Tutarı': komisyonTutari.toFixed(2),
+        'Kargo Firması': siparis['Kargo Firması'] || '',
+        'Kargo Kodu': siparis['Kargo Kodu'] || '',
+        'Teslim Tarihi': siparis['Teslim Tarihi'] || '',
+        'Marka': siparis['Marka'] || '',
+        'Stok Kodu': siparis['Stok Kodu'] || '',
+        'Son Güncelleme': new Date().toLocaleString('tr-TR')
+      };
+    });
+
+    // Excel workbook oluştur
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Tüm Siparişler');
+
+    // Sütun genişliklerini ayarla
+    const colWidths = [
+      { wch: 15 }, // Barkod
+      { wch: 15 }, // Paket No
+      { wch: 12 }, // Sipariş Tarihi
+      { wch: 20 }, // Alıcı
+      { wch: 12 }, // İl
+      { wch: 15 }, // İlçe
+      { wch: 30 }, // Ürün Adı
+      { wch: 15 }, // Sipariş Statüsü
+      { wch: 8 },  // Adet
+      { wch: 15 }, // Birim Fiyatı
+      { wch: 15 }, // Satış Tutarı
+      { wch: 15 }, // İndirim Tutarı
+      { wch: 18 }, // Faturalanacak Tutar
+      { wch: 15 }, // Komisyon Oranı
+      { wch: 16 }, // Komisyon Tutarı
+      { wch: 15 }, // Kargo Firması
+      { wch: 15 }, // Kargo Kodu
+      { wch: 12 }, // Teslim Tarihi
+      { wch: 15 }, // Marka
+      { wch: 20 }, // Stok Kodu
+      { wch: 20 }  // Son Güncelleme
+    ];
+    ws['!cols'] = colWidths;
+
+    // Dosyayı indir
+    const fileName = `tum_siparisler_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(wb, fileName);
   };
 
@@ -747,8 +836,18 @@ const SiparisTablosu = ({ siparisler, onSiparisUpdate, onSiparisAdd, onSiparisUp
                 startIcon={<DownloadIcon />}
                 onClick={exportToExcel}
                 fullWidth
+                sx={{ mb: 1 }}
               >
-                Excel İndir
+                Excel İndir (Filtreleri Dahil)
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={() => exportAllToExcel()}
+                fullWidth
+                color="secondary"
+              >
+                Tüm Siparişleri İndir
               </Button>
             </Box>
           </Grid>

@@ -43,7 +43,7 @@ const UrunTablosu = ({ urunler, onUrunUpdate, onUrunUpload }) => {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [selectedKargo, setSelectedKargo] = useState('');
-  const [dolarKuru, setDolarKuru] = useState(30.0); // Varsayılan dolar kuru
+  const [dolarKuru, setDolarKuru] = useState(42.0); // Varsayılan dolar kuru
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingUrun, setEditingUrun] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -64,7 +64,7 @@ const UrunTablosu = ({ urunler, onUrunUpdate, onUrunUpload }) => {
     // localStorage değişikliklerini dinle
     const handleStorageChange = (e) => {
       if (e.key === 'dolarKuru') {
-        setDolarKuru(parseFloat(e.newValue) || 30.0);
+        setDolarKuru(parseFloat(e.newValue) || 42.0);
       }
     };
 
@@ -391,6 +391,8 @@ const UrunTablosu = ({ urunler, onUrunUpdate, onUrunUpload }) => {
       return;
     }
 
+
+
     // Dolar kuru ile birlikte hesaplanmış verileri hazırla
     const exportData = filteredUrunler.map(urun => {
       const dolarFiyati = parseFloat(urun['Dolar Fiyatı'] || 0);
@@ -404,7 +406,7 @@ const UrunTablosu = ({ urunler, onUrunUpdate, onUrunUpload }) => {
         'Kategori İsmi': urun['Kategori İsmi'] || '',
         'Durum': urun['Durum'] || '',
         'Ürün Stok Adedi': urun['Ürün Stok Adedi'] || '',
-        'Dolar Fiyatı ($)': dolarFiyati.toFixed(2),
+        'Dolar Fiyatı': dolarFiyati.toFixed(2),
         'TL Fiyatı (₺)': tlFiyati.toFixed(2),
         'Güncel Dolar Kuru': dolarKuru.toFixed(2),
         'Piyasa Satış Fiyatı (KDV Dahil)': urun['Piyasa Satış Fiyatı (KDV Dahil)'] || '',
@@ -442,6 +444,68 @@ const UrunTablosu = ({ urunler, onUrunUpdate, onUrunUpload }) => {
 
     // Dosyayı indir
     const fileName = `urunler_guncellenmiş_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  };
+
+  const exportAllToExcel = () => {
+    if (!urunler || urunler.length === 0) {
+      alert('Dışa aktarılacak veri bulunamadı!');
+      return;
+    }
+
+
+
+    // Dolar kuru ile birlikte hesaplanmış verileri hazırla (TÜM ÜRÜNLER)
+    const exportData = urunler.map(urun => {
+      const dolarFiyati = parseFloat(urun['Dolar Fiyatı'] || 0);
+      const tlFiyati = dolarFiyati * dolarKuru;
+      
+      return {
+        'Partner ID': urun['Partner ID'] || '',
+        'Tedarikçi Stok Kodu': urun['Tedarikçi Stok Kodu'] || '',
+        'Ürün Adı': urun['Ürün Adı'] || '',
+        'Marka': urun['Marka'] || '',
+        'Kategori İsmi': urun['Kategori İsmi'] || '',
+        'Durum': urun['Durum'] || '',
+        'Ürün Stok Adedi': urun['Ürün Stok Adedi'] || '',
+        'Dolar Fiyatı': dolarFiyati.toFixed(2),
+        'TL Fiyatı (₺)': tlFiyati.toFixed(2),
+        'Güncel Dolar Kuru': dolarKuru.toFixed(2),
+        'Piyasa Satış Fiyatı (KDV Dahil)': urun['Piyasa Satış Fiyatı (KDV Dahil)'] || '',
+        "Trendyol'da Satılacak Fiyat (KDV Dahil)": urun["Trendyol'da Satılacak Fiyat (KDV Dahil)"] || '',
+        'BuyBox Fiyatı': urun['BuyBox Fiyatı'] || '',
+        'Komisyon Oranı (%)': urun['Komisyon Oranı'] || '',
+        'Son Güncelleme': new Date().toLocaleString('tr-TR')
+      };
+    });
+
+    // Excel workbook oluştur
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Tüm Ürünler');
+
+    // Sütun genişliklerini ayarla
+    const colWidths = [
+      { wch: 15 }, // Partner ID
+      { wch: 20 }, // Tedarikçi Stok Kodu
+      { wch: 30 }, // Ürün Adı
+      { wch: 15 }, // Marka
+      { wch: 20 }, // Kategori
+      { wch: 12 }, // Durum
+      { wch: 12 }, // Stok Adedi
+      { wch: 15 }, // Dolar Fiyatı
+      { wch: 15 }, // TL Fiyatı
+      { wch: 15 }, // Dolar Kuru
+      { wch: 20 }, // Piyasa Satış Fiyatı
+      { wch: 25 }, // Trendyol Fiyatı
+      { wch: 15 }, // BuyBox Fiyatı
+      { wch: 15 }, // Komisyon Oranı
+      { wch: 20 }  // Son Güncelleme
+    ];
+    ws['!cols'] = colWidths;
+
+    // Dosyayı indir
+    const fileName = `tum_urunler_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(wb, fileName);
   };
 
@@ -583,7 +647,16 @@ const UrunTablosu = ({ urunler, onUrunUpdate, onUrunUpload }) => {
                 onClick={exportToExcel}
                 size="small"
               >
-                Excel İndir
+                Excel İndir (Filtreleri Dahil)
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={() => exportAllToExcel()}
+                size="small"
+                sx={{ ml: 1 }}
+              >
+                Tüm Ürünleri İndir
               </Button>
             </Box>
           </Grid>

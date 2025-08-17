@@ -31,7 +31,7 @@ import * as XLSX from 'xlsx';
 const KarAnalizi = ({ urunler, siparisler }) => {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedStockCode, setSelectedStockCode] = useState('');
-  const [dolarKuru, setDolarKuru] = useState(30.0);
+  const [dolarKuru, setDolarKuru] = useState(42.0);
 
   // localStorage'dan dolar kurunu yükle ve değişiklikleri dinle
   useEffect(() => {
@@ -48,7 +48,7 @@ const KarAnalizi = ({ urunler, siparisler }) => {
     // localStorage değişikliklerini dinle
     const handleStorageChange = (e) => {
       if (e.key === 'dolarKuru') {
-        setDolarKuru(parseFloat(e.newValue) || 30.0);
+        setDolarKuru(parseFloat(e.newValue) || 42.0);
       }
     };
 
@@ -312,6 +312,8 @@ const KarAnalizi = ({ urunler, siparisler }) => {
       return;
     }
 
+
+
     // Sipariş bazlı veri
     const orderData = filteredOrders.map(order => ({
       'Sipariş No': order.orderNumber,
@@ -346,7 +348,7 @@ const KarAnalizi = ({ urunler, siparisler }) => {
           'Magicbox/Cam Sipariş': item.sarfBedeliBirim === 10 ? 'Evet' : 'Hayır',
           'Komisyon (₺)': item.komisyonTutari.toFixed(2),
           'Ürün Eşleşti': item.hasUrunMatch ? 'Evet' : 'Hayır',
-          'Dolar Fiyatı ($)': item.urun ? parseFloat(item.urun['Dolar Fiyatı'] || 0).toFixed(2) : 'N/A',
+          'Dolar Fiyatı': item.urun ? parseFloat(item.urun['Dolar Fiyatı'] || 0).toFixed(2) : 'N/A',
           'Analiz Tarihi': new Date().toLocaleString('tr-TR')
         });
       });

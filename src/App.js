@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   ThemeProvider,
   createTheme,
@@ -95,10 +95,29 @@ function App() {
     });
   };
 
-  const handleSiparisUpdate = (oldSiparis, newSiparis) => {
-    const updatedSiparisler = siparisler.map(siparis => 
-      siparis === oldSiparis ? newSiparis : siparis
-    );
+  const handleSiparisUpdate = (originalSiparis, updatedSiparis) => {
+    console.log('App.js - handleSiparisUpdate çağrıldı');
+    console.log('originalSiparis:', originalSiparis);
+    console.log('updatedSiparis:', updatedSiparis);
+    console.log('mevcut siparisler:', siparisler);
+    
+    // Benzersiz alan kombinasyonu ile siparişi bul ve güncelle
+    const updatedSiparisler = siparisler.map(siparis => {
+      // Paket No + Sipariş Numarası kombinasyonu unique olmalı
+      const originalPaketNo = originalSiparis['Paket No'] || originalSiparis['Sipariş Numarası'] || '';
+      const currentPaketNo = siparis['Paket No'] || siparis['Sipariş Numarası'] || '';
+      const originalSiparisNo = originalSiparis['Sipariş Numarası'] || originalSiparis['Paket No'] || '';
+      const currentSiparisNo = siparis['Sipariş Numarası'] || siparis['Paket No'] || '';
+      
+      if ((originalPaketNo && currentPaketNo === originalPaketNo) ||
+          (originalSiparisNo && currentSiparisNo === originalSiparisNo)) {
+        console.log('Eşleşen sipariş bulundu, güncelleniyor:', siparis);
+        return { ...updatedSiparis };
+      }
+      return siparis;
+    });
+    
+    console.log('Güncellenmiş siparişler:', updatedSiparisler);
     setSiparisler(updatedSiparisler);
     setSnackbar({
       open: true,
