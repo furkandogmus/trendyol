@@ -48,18 +48,35 @@ const UrunTablosu = ({ urunler, onUrunUpdate, onUrunUpload }) => {
   const [editForm, setEditForm] = useState({});
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 
-  // localStorage'dan dolar kurunu yükle
+  // localStorage'dan dolar kurunu yükle ve değişiklikleri dinle
   useEffect(() => {
-    const savedDolarKuru = localStorage.getItem('dolarKuru');
-    if (savedDolarKuru) {
-      setDolarKuru(parseFloat(savedDolarKuru));
-    }
-  }, []);
+    const loadDolarKuru = () => {
+      const savedDolarKuru = localStorage.getItem('dolarKuru');
+      if (savedDolarKuru) {
+        setDolarKuru(parseFloat(savedDolarKuru));
+      }
+    };
 
-  // Dolar kurunu localStorage'a kaydet
-  useEffect(() => {
-    localStorage.setItem('dolarKuru', dolarKuru.toString());
-  }, [dolarKuru]);
+    // İlk yükleme
+    loadDolarKuru();
+
+    // localStorage değişikliklerini dinle
+    const handleStorageChange = (e) => {
+      if (e.key === 'dolarKuru') {
+        setDolarKuru(parseFloat(e.newValue) || 30.0);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Aynı tab içindeki değişiklikleri dinlemek için interval kullan
+    const interval = setInterval(loadDolarKuru, 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Excel yükleme dialog'unu aç
   const handleOpenUploadDialog = () => {

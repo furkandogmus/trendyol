@@ -32,7 +32,7 @@ const Dashboard = ({ urunler }) => {
   const [dolarKuru, setDolarKuru] = useState(30.0);
   const [dolarKuruDialogOpen, setDolarKuruDialogOpen] = useState(false);
   const [dolarKuruForm, setDolarKuruForm] = useState({
-    yeniKur: '30.00'
+    yeniKur: '42.00'
   });
 
   // localStorage'dan dolar kurunu yükle

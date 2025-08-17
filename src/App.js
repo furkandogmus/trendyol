@@ -15,11 +15,13 @@ import {
   Analytics as AnalyticsIcon,
   ShoppingCart as ShoppingCartIcon,
   TrendingUp as TrendingUpIcon,
-  Inventory as InventoryIcon
+  Inventory as InventoryIcon,
+  Assessment as AssessmentIcon
 } from '@mui/icons-material';
 import UrunTablosu from './components/UrunTablosu';
 import SiparisTablosu from './components/SiparisTablosu';
 import KarZararAnalizi from './components/KarZararAnalizi';
+import KarAnalizi from './components/KarAnalizi';
 import Dashboard from './components/Dashboard';
 
 
@@ -126,6 +128,8 @@ function App() {
         />;
       case 'analiz':
         return <KarZararAnalizi urunler={urunler} />;
+      case 'kar-analizi':
+        return <KarAnalizi urunler={urunler} siparisler={siparisler} />;
       default:
         return <Dashboard urunler={urunler} />;
     }
@@ -186,6 +190,14 @@ function App() {
                   sx={{ whiteSpace: 'nowrap' }}
                 >
                   Kar-Zarar Analizi
+                </Button>
+                <Button
+                  variant={activeTab === 'kar-analizi' ? 'contained' : 'outlined'}
+                  startIcon={<AssessmentIcon />}
+                  onClick={() => setActiveTab('kar-analizi')}
+                  sx={{ whiteSpace: 'nowrap' }}
+                >
+                  Kar Analizi
                 </Button>
               </Box>
             </Box>
