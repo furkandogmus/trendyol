@@ -4,8 +4,6 @@ import {
   Paper,
   Typography,
   Grid,
-  Card,
-  CardContent,
   Chip,
   Alert,
   FormControl,
@@ -359,7 +357,16 @@ const KarAnalizi = ({ urunler, siparisler }) => {
         ...product,
         averageProfit: product.orderCount > 0 ? product.totalProfit / product.orderCount : 0
       }))
-      .sort((a, b) => b.totalProfit - a.totalProfit)
+      .sort((a, b) => {
+        // Özel sıralama: Filtreye göre uygun sıralama
+        if (a.totalProfit >= 0 && b.totalProfit >= 0) {
+          return b.totalProfit - a.totalProfit; // Karlı ürünler: büyükten küçüğe
+        }
+        if (a.totalProfit < 0 && b.totalProfit < 0) {
+          return a.totalProfit - b.totalProfit; // Zararlı ürünler: en çok zarar üstte
+        }
+        return b.totalProfit - a.totalProfit; // Karışık: kar üstte
+      })
       .slice(0, 10);
   }, [filteredOrders]);
 
@@ -538,39 +545,18 @@ const KarAnalizi = ({ urunler, siparisler }) => {
         </Grid>
       </Paper>
 
-      {/* Özet Kartları */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={1.5}>
-          <Card elevation={2}>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <MoneyIcon sx={{ fontSize: 32, color: 'success.main', mb: 1 }} />
-              <Typography variant="h6" color="success.main">
-                ₺{stats.totalRevenue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Toplam Gelir
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+      {/* Toplam Maliyet Özeti */}
+      <Paper elevation={3} sx={{ p: 3, mb: 3, bgcolor: 'background.paper' }}>
+        <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <AssessmentIcon color="primary" />
+          Toplam Maliyet Analizi
+        </Typography>
         
-        <Grid item xs={12} sm={6} md={1.5}>
-          <Card elevation={2}>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <TrendingUpIcon sx={{ fontSize: 32, color: stats.totalProfit >= 0 ? 'success.main' : 'error.main', mb: 1 }} />
-              <Typography variant="h6" color={stats.totalProfit >= 0 ? 'success.main' : 'error.main'}>
-                ₺{stats.totalProfit.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Net Kar
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={1.5}>
-          <Card elevation={2}>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
+        <Grid container spacing={2}>
+
+            {/* Toplam Adet */}
+            <Grid item xs={6} sm={4} md={1.5}>
+            <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'primary.50', borderRadius: 1 }}>
               <InventoryIcon sx={{ fontSize: 32, color: 'primary.main', mb: 1 }} />
               <Typography variant="h6" color="primary.main">
                 {stats.totalQuantity.toLocaleString('tr-TR')}
@@ -578,80 +564,142 @@ const KarAnalizi = ({ urunler, siparisler }) => {
               <Typography variant="body2" color="text.secondary">
                 Toplam Adet
               </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={1.5}>
-          <Card elevation={2}>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <ShippingIcon sx={{ fontSize: 32, color: 'warning.main', mb: 1 }} />
+            </Box>
+          </Grid>
+
+          {/* Gelir */}
+          <Grid item xs={6} sm={4} md={1.5}>
+            <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'success.50', borderRadius: 1 }}>
+              <TrendingUpIcon sx={{ fontSize: 32, color: 'success.main', mb: 1 }} />
+              <Typography variant="h6" color="success.main">
+                ₺{stats.totalRevenue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Toplam Gelir
+              </Typography>
+            </Box>
+          </Grid>
+
+            {/* Net Kar */}
+            <Grid item xs={6} sm={4} md={1.5}>
+            <Box sx={{ 
+              textAlign: 'center', 
+              p: 2, 
+              bgcolor: stats.totalProfit >= 0 ? 'success.100' : 'error.100', 
+              borderRadius: 1,
+              border: 2,
+              borderColor: stats.totalProfit >= 0 ? 'success.main' : 'error.main'
+            }}>
+              {stats.totalProfit >= 0 ? 
+                <TrendingUpIcon sx={{ fontSize: 32, color: 'success.main', mb: 1 }} /> :
+                <TrendingDownIcon sx={{ fontSize: 32, color: 'error.main', mb: 1 }} />
+              }
+              <Typography variant="h6" color={stats.totalProfit >= 0 ? 'success.main' : 'error.main'}>
+                ₺{Math.abs(stats.totalProfit).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Net {stats.totalProfit >= 0 ? 'Kar' : 'Zarar'}
+              </Typography>
+            </Box>
+          </Grid>
+
+          {/* Ürün Maliyeti */}
+          <Grid item xs={6} sm={4} md={1.5}>
+            <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'warning.50', borderRadius: 1 }}>
+              <InventoryIcon sx={{ fontSize: 32, color: 'warning.main', mb: 1 }} />
               <Typography variant="h6" color="warning.main">
+                ₺{stats.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Ürün Maliyeti
+              </Typography>
+            </Box>
+          </Grid>
+
+          {/* Komisyon */}
+          <Grid item xs={6} sm={4} md={1.5}>
+            <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'info.50', borderRadius: 1 }}>
+              <MoneyIcon sx={{ fontSize: 32, color: 'info.main', mb: 1 }} />
+              <Typography variant="h6" color="info.main">
+                ₺{stats.totalCommission.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Komisyon
+              </Typography>
+            </Box>
+          </Grid>
+
+          {/* Kargo */}
+          <Grid item xs={6} sm={4} md={1.5}>
+            <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'secondary.50', borderRadius: 1 }}>
+              <ShippingIcon sx={{ fontSize: 32, color: 'secondary.main', mb: 1 }} />
+              <Typography variant="h6" color="secondary.main">
                 ₺{stats.totalCargoFee.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Kargo
               </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={1.5}>
-          <Card elevation={2}>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
+            </Box>
+          </Grid>
+
+          {/* Diğer Giderler */}
+          <Grid item xs={6} sm={4} md={1.5}>
+            <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+              <AssessmentIcon sx={{ fontSize: 32, color: 'grey.700', mb: 1 }} />
+              <Typography variant="h6" color="grey.700">
+                ₺{(stats.totalServiceFee + stats.totalSarfFee + stats.totalStopaj).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Diğer Giderler
+              </Typography>
+            </Box>
+          </Grid>
+
+          {/* Sipariş Eşleşme */}
+          <Grid item xs={6} sm={4} md={1.5}>
+            <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'info.50', borderRadius: 1 }}>
               <AssessmentIcon sx={{ fontSize: 32, color: 'info.main', mb: 1 }} />
               <Typography variant="h6" color="info.main">
-                ₺{stats.totalServiceFee.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Hizmet Bedeli
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={1.5}>
-          <Card elevation={2}>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <MoneyIcon sx={{ fontSize: 32, color: 'secondary.main', mb: 1 }} />
-              <Typography variant="h6" color="secondary.main">
-                ₺{stats.totalSarfFee.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Sarf Bedeli
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={1.5}>
-          <Card elevation={2}>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <TrendingDownIcon sx={{ fontSize: 32, color: 'error.main', mb: 1 }} />
-              <Typography variant="h6" color="error.main">
-                ₺{stats.totalStopaj.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Stopaj
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={1.5}>
-          <Card elevation={2}>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <AssessmentIcon sx={{ fontSize: 32, color: 'primary.main', mb: 1 }} />
-              <Typography variant="h6" color="primary.main">
                 {stats.matchedOrders}/{stats.totalOrders}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Sipariş Eşleşme
               </Typography>
-            </CardContent>
-          </Card>
+            </Box>
+          </Grid>
         </Grid>
-      </Grid>
+
+        {/* Alt Satır - Detaylı Gider Dağılımı */}
+        <Box sx={{ mt: 3, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+          <Typography variant="subtitle2" sx={{ mb: 2, color: 'text.secondary' }}>
+            Diğer Giderler:
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={6} sm={3}>
+              <Typography variant="body2">
+                <strong>Hizmet Bedeli:</strong> ₺{stats.totalServiceFee.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+              </Typography>
+            </Grid>
+            <Grid item xs={6} sm={3}>
+              <Typography variant="body2">
+                <strong>Sarf Bedeli:</strong> ₺{stats.totalSarfFee.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+              </Typography>
+            </Grid>
+            <Grid item xs={6} sm={3}>
+              <Typography variant="body2">
+                <strong>Stopaj:</strong> ₺{stats.totalStopaj.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+              </Typography>
+            </Grid>
+            <Grid item xs={6} sm={3}>
+              <Typography variant="body2">
+                <strong>Kar Marjı:</strong> %{stats.profitMargin.toFixed(2)}
+              </Typography>
+            </Grid>
+          </Grid>
+        </Box>
+      </Paper>
+
+      
 
       {/* Grafik ve Tablolar */}
       <Grid container spacing={3}>
@@ -715,7 +763,9 @@ const KarAnalizi = ({ urunler, siparisler }) => {
         <Grid item xs={12} md={6}>
           <Paper elevation={2} sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              En Karlı Ürünler (Stok Kodu Bazında)
+              {selectedFilter === 'loss' ? 'En Zararlı Ürünler' : 
+               selectedFilter === 'profitable' ? 'En Karlı Ürünler' :
+               'En Karlı/Zararlı Ürünler'} (Stok Kodu Bazında)
             </Typography>
             <div style={{ height: 350, width: '100%' }}>
               <DataGrid
@@ -759,6 +809,12 @@ const KarAnalizi = ({ urunler, siparisler }) => {
                     headerName: 'Toplam Kar',
                     width: 140,
                     type: 'number',
+                    sortComparator: (v1, v2) => {
+                      // Aynı sıralama mantığı: en karlıdan en zararlıya
+                      if (v1 >= 0 && v2 >= 0) return v2 - v1; // Karlı ürünler büyükten küçüğe
+                      if (v1 < 0 && v2 < 0) return v1 - v2;   // Zararlı ürünler en çok zarar üstte
+                      return v2 - v1; // Karışık durumda normal descending
+                    },
                     renderCell: (params) => (
                       <Typography
                         variant="body2"
@@ -779,6 +835,9 @@ const KarAnalizi = ({ urunler, siparisler }) => {
                 initialState={{
                   pagination: {
                     paginationModel: { pageSize: 10 },
+                  },
+                  sorting: {
+                    sortModel: [{ field: 'toplamKar', sort: 'desc' }],
                   },
                 }}
                 pageSizeOptions={[10, 25]}
@@ -956,6 +1015,9 @@ const KarAnalizi = ({ urunler, siparisler }) => {
             initialState={{
               pagination: {
                 paginationModel: { pageSize: 25 },
+              },
+              sorting: {
+                sortModel: [{ field: 'netKar', sort: 'desc' }],
               },
             }}
             pageSizeOptions={[25, 50, 100]}

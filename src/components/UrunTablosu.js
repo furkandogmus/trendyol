@@ -32,6 +32,7 @@ import {
   Save as SaveIcon,
   Cancel as CancelIcon,
   Upload as UploadIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import ExcelUploader from './ExcelUploader';
@@ -125,6 +126,29 @@ const UrunTablosu = ({ urunler, onUrunUpdate, onUrunUpload }) => {
       onUrunUpdate(editingUrun, editForm);
     }
     handleCloseEditDialog();
+  };
+
+  // Ürün silme
+  const handleDeleteUrun = (urun) => {
+    if (window.confirm(`"${urun['Ürün Adı'] || 'Bu ürün'}" ürününü silmek istediğinizden emin misiniz?`)) {
+      // localStorage'dan güncel veriyi al
+      const savedUrunler = localStorage.getItem('urunler');
+      if (savedUrunler) {
+        const currentUrunler = JSON.parse(savedUrunler);
+        // Silinecek ürünü filtrele
+        const updatedUrunler = currentUrunler.filter(u => 
+          u['Stok Kodu'] !== urun['Stok Kodu'] || 
+          u['Ürün Adı'] !== urun['Ürün Adı']
+        );
+        // localStorage'ı güncelle
+        localStorage.setItem('urunler', JSON.stringify(updatedUrunler));
+        // Parent component'e bildir
+        if (onUrunUpdate) {
+          // Silme işlemi için özel callback
+          window.location.reload(); // Basit çözüm: sayfayı yenile
+        }
+      }
+    }
   };
 
   // Filtreleme seçenekleri
@@ -361,18 +385,29 @@ const UrunTablosu = ({ urunler, onUrunUpdate, onUrunUpload }) => {
     {
       field: 'actions',
       headerName: 'İşlemler',
-      width: 100,
+      width: 120,
       sortable: false,
       renderCell: (params) => (
-        <Tooltip title="Ürünü düzenle">
-          <IconButton
-            size="small"
-            color="primary"
-            onClick={() => handleOpenEditDialog(params.row)}
-          >
-            <EditIcon />
-          </IconButton>
-        </Tooltip>
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Tooltip title="Ürünü düzenle">
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={() => handleOpenEditDialog(params.row)}
+            >
+              <EditIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Ürünü sil">
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => handleDeleteUrun(params.row)}
+            >
+              <DeleteIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
       )
     }
   ];

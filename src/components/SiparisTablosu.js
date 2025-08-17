@@ -31,7 +31,8 @@ import {
   Save as SaveIcon,
   Cancel as CancelIcon,
   Add as AddIcon,
-  Upload as UploadIcon
+  Upload as UploadIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import ExcelUploader from './ExcelUploader';
@@ -174,6 +175,34 @@ const SiparisTablosu = ({ siparisler, onSiparisUpdate, onSiparisAdd, onSiparisUp
       onSiparisAdd({ ...addForm, id: Date.now() });
     }
     handleCloseAddDialog();
+  };
+
+  // Sipariş silme
+  const handleDeleteSiparis = (siparis) => {
+    const siparisNo = siparis['Sipariş Numarası'] || siparis['Paket No'] || 'Bu sipariş';
+    if (window.confirm(`"${siparisNo}" numaralı siparişi silmek istediğinizden emin misiniz?`)) {
+      // localStorage'dan güncel veriyi al
+      const savedSiparisler = localStorage.getItem('siparisler');
+      if (savedSiparisler) {
+        const currentSiparisler = JSON.parse(savedSiparisler);
+        // Silinecek siparişi filtrele
+        const updatedSiparisler = currentSiparisler.filter(s => {
+          const sPaketNo = s['Paket No'] || s['Sipariş Numarası'] || '';
+          const sSiparisNo = s['Sipariş Numarası'] || s['Paket No'] || '';
+          const targetPaketNo = siparis['Paket No'] || siparis['Sipariş Numarası'] || '';
+          const targetSiparisNo = siparis['Sipariş Numarası'] || siparis['Paket No'] || '';
+          
+          return !(sPaketNo === targetPaketNo || sSiparisNo === targetSiparisNo);
+        });
+        // localStorage'ı güncelle
+        localStorage.setItem('siparisler', JSON.stringify(updatedSiparisler));
+        // Parent component'e bildir
+        if (onSiparisUpdate) {
+          // Silme işlemi için özel callback
+          window.location.reload(); // Basit çözüm: sayfayı yenile
+        }
+      }
+    }
   };
 
   // Excel yükleme dialog'unu aç
@@ -501,18 +530,29 @@ const SiparisTablosu = ({ siparisler, onSiparisUpdate, onSiparisAdd, onSiparisUp
     {
       field: 'actions',
       headerName: 'İşlemler',
-      width: 100,
+      width: 120,
       sortable: false,
       renderCell: (params) => (
-        <Tooltip title="Siparişi düzenle">
-          <IconButton
-            size="small"
-            color="primary"
-            onClick={() => handleOpenEditDialog(params.row)}
-          >
-            <EditIcon />
-          </IconButton>
-        </Tooltip>
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Tooltip title="Siparişi düzenle">
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={() => handleOpenEditDialog(params.row)}
+            >
+              <EditIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Siparişi sil">
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => handleDeleteSiparis(params.row)}
+            >
+              <DeleteIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
       )
     }
   ];
