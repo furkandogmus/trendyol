@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   ThemeProvider,
   createTheme,
@@ -7,26 +7,21 @@ import {
   Container,
   Typography,
   Paper,
-  Grid,
-  Card,
-  CardContent,
-  CardHeader,
-  IconButton,
   Button,
   Alert,
   Snackbar
 } from '@mui/material';
 import {
-  Upload as UploadIcon,
   Analytics as AnalyticsIcon,
   ShoppingCart as ShoppingCartIcon,
   TrendingUp as TrendingUpIcon,
-  AttachMoney as MoneyIcon
+  Inventory as InventoryIcon
 } from '@mui/icons-material';
+import UrunTablosu from './components/UrunTablosu';
 import SiparisTablosu from './components/SiparisTablosu';
 import KarZararAnalizi from './components/KarZararAnalizi';
 import Dashboard from './components/Dashboard';
-import ExcelUploader from './components/ExcelUploader';
+
 
 const theme = createTheme({
   palette: {
@@ -50,15 +45,60 @@ const theme = createTheme({
 });
 
 function App() {
+  const [urunler, setUrunler] = useState([]);
   const [siparisler, setSiparisler] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-  const handleExcelUpload = (data) => {
+
+
+  const handleUrunUpload = (data) => {
+    setUrunler(data);
+    setSnackbar({
+      open: true,
+      message: `${data.length} ürün başarıyla yüklendi!`,
+      severity: 'success'
+    });
+  };
+
+  const handleSiparisUpload = (data) => {
     setSiparisler(data);
     setSnackbar({
       open: true,
       message: `${data.length} sipariş başarıyla yüklendi!`,
+      severity: 'success'
+    });
+  };
+
+  const handleUrunUpdate = (oldUrun, newUrun) => {
+    const updatedUrunler = urunler.map(urun => 
+      urun === oldUrun ? newUrun : urun
+    );
+    setUrunler(updatedUrunler);
+    setSnackbar({
+      open: true,
+      message: 'Ürün başarıyla güncellendi!',
+      severity: 'success'
+    });
+  };
+
+  const handleSiparisUpdate = (oldSiparis, newSiparis) => {
+    const updatedSiparisler = siparisler.map(siparis => 
+      siparis === oldSiparis ? newSiparis : siparis
+    );
+    setSiparisler(updatedSiparisler);
+    setSnackbar({
+      open: true,
+      message: 'Sipariş başarıyla güncellendi!',
+      severity: 'success'
+    });
+  };
+
+  const handleSiparisAdd = (newSiparis) => {
+    setSiparisler(prev => [...prev, newSiparis]);
+    setSnackbar({
+      open: true,
+      message: 'Yeni sipariş başarıyla eklendi!',
       severity: 'success'
     });
   };
@@ -70,15 +110,24 @@ function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard siparisler={siparisler} />;
+        return <Dashboard urunler={urunler} />;
+      case 'urunler':
+        return <UrunTablosu 
+          urunler={urunler} 
+          onUrunUpdate={handleUrunUpdate}
+          onUrunUpload={handleUrunUpload}
+        />;
       case 'siparisler':
-        return <SiparisTablosu siparisler={siparisler} />;
+        return <SiparisTablosu 
+          siparisler={siparisler} 
+          onSiparisUpdate={handleSiparisUpdate}
+          onSiparisAdd={handleSiparisAdd}
+          onSiparisUpload={handleSiparisUpload}
+        />;
       case 'analiz':
-        return <KarZararAnalizi siparisler={siparisler} />;
-      case 'upload':
-        return <ExcelUploader onUpload={handleExcelUpload} />;
+        return <KarZararAnalizi urunler={urunler} />;
       default:
-        return <Dashboard siparisler={siparisler} />;
+        return <Dashboard urunler={urunler} />;
     }
   };
 
@@ -90,11 +139,12 @@ function App() {
         <Paper elevation={2} sx={{ mb: 3 }}>
           <Container maxWidth="xl">
             <Box sx={{ py: 3 }}>
-              <Typography variant="h4" component="h1" gutterBottom color="primary">
-                📊 Sipariş Takip & Kar-Zarar Analizi
+              <Typography variant="h4" component="h1" gutterBottom color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <AnalyticsIcon sx={{ fontSize: 36 }} />
+                Ürün & Sipariş Takip Sistemi
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Excel verilerinizi yükleyin, siparişlerinizi takip edin ve kar-zarar hesaplamaları yapın
+                Excel verilerinizi yükleyin, ürünlerinizi düzenleyin, siparişlerinizi takip edin
               </Typography>
             </Box>
           </Container>
@@ -103,56 +153,56 @@ function App() {
         <Container maxWidth="xl">
           {/* Navigation Tabs */}
           <Paper elevation={1} sx={{ mb: 3, borderRadius: 2 }}>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, p: 2 }}>
-              <Button
-                variant={activeTab === 'dashboard' ? 'contained' : 'outlined'}
-                startIcon={<AnalyticsIcon />}
-                onClick={() => setActiveTab('dashboard')}
-                sx={{ borderRadius: 2 }}
-              >
-                Dashboard
-              </Button>
-              <Button
-                variant={activeTab === 'siparisler' ? 'contained' : 'outlined'}
-                startIcon={<ShoppingCartIcon />}
-                onClick={() => setActiveTab('siparisler')}
-                sx={{ borderRadius: 2 }}
-              >
-                Siparişler
-              </Button>
-              <Button
-                variant={activeTab === 'analiz' ? 'contained' : 'outlined'}
-                startIcon={<TrendingUpIcon />}
-                onClick={() => setActiveTab('analiz')}
-                sx={{ borderRadius: 2 }}
-              >
-                Kar-Zarar Analizi
-              </Button>
-              <Button
-                variant={activeTab === 'upload' ? 'contained' : 'outlined'}
-                startIcon={<UploadIcon />}
-                onClick={() => setActiveTab('upload')}
-                sx={{ borderRadius: 2 }}
-              >
-                Excel Yükle
-              </Button>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <Box sx={{ display: 'flex', gap: 1, p: 2, overflowX: 'auto' }}>
+                <Button
+                  variant={activeTab === 'dashboard' ? 'contained' : 'outlined'}
+                  startIcon={<AnalyticsIcon />}
+                  onClick={() => setActiveTab('dashboard')}
+                  sx={{ whiteSpace: 'nowrap' }}
+                >
+                  Dashboard
+                </Button>
+                <Button
+                  variant={activeTab === 'urunler' ? 'contained' : 'outlined'}
+                  startIcon={<InventoryIcon />}
+                  onClick={() => setActiveTab('urunler')}
+                  sx={{ whiteSpace: 'nowrap' }}
+                >
+                  Ürün Tablosu
+                </Button>
+                <Button
+                  variant={activeTab === 'siparisler' ? 'contained' : 'outlined'}
+                  startIcon={<ShoppingCartIcon />}
+                  onClick={() => setActiveTab('siparisler')}
+                  sx={{ whiteSpace: 'nowrap' }}
+                >
+                  Sipariş Tablosu
+                </Button>
+                <Button
+                  variant={activeTab === 'analiz' ? 'contained' : 'outlined'}
+                  startIcon={<TrendingUpIcon />}
+                  onClick={() => setActiveTab('analiz')}
+                  sx={{ whiteSpace: 'nowrap' }}
+                >
+                  Kar-Zarar Analizi
+                </Button>
+              </Box>
             </Box>
           </Paper>
 
-          {/* Main Content */}
-          <Box sx={{ mb: 4 }}>
-            {renderContent()}
-          </Box>
+          {/* Content */}
+          {renderContent()}
         </Container>
 
-        {/* Snackbar for notifications */}
+        {/* Snackbar */}
         <Snackbar
           open={snackbar.open}
           autoHideDuration={6000}
           onClose={handleSnackbarClose}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         >
-          <Alert onClose={handleSnackbarClose} severity={snackbar.severity}>
+          <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%' }}>
             {snackbar.message}
           </Alert>
         </Snackbar>

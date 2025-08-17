@@ -14,7 +14,7 @@ import {
 import { Upload as UploadIcon, InsertDriveFile as ExcelIcon } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
 
-const ExcelUploader = ({ onUpload }) => {
+const ExcelUploader = ({ onUpload, onUploadSuccess }) => {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -43,12 +43,22 @@ const ExcelUploader = ({ onUpload }) => {
 
     try {
       const data = await readExcelFile(file);
-      onUpload(data);
+      
+      // Her iki prop'u da destekle
+      if (onUploadSuccess) {
+        onUploadSuccess(data);
+      } else if (onUpload) {
+        onUpload(data);
+      }
+      
       setPreview({
         rowCount: data.length,
         columns: Object.keys(data[0] || {}),
         sampleData: data.slice(0, 3)
       });
+      
+      // Başarı mesajı göster
+      setError('');
     } catch (err) {
       setError('Dosya okunurken bir hata oluştu: ' + err.message);
     } finally {
@@ -108,9 +118,12 @@ const ExcelUploader = ({ onUpload }) => {
 
   return (
     <Box>
-      <Typography variant="h5" gutterBottom>
-        📁 Excel Dosyası Yükle
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+        <UploadIcon sx={{ fontSize: 28, color: 'primary.main' }} />
+        <Typography variant="h5">
+          Excel Dosyası Yükle
+        </Typography>
+      </Box>
       
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
@@ -200,9 +213,12 @@ const ExcelUploader = ({ onUpload }) => {
           {preview && (
             <Card elevation={3}>
               <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  📊 Dosya Önizleme
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                  <ExcelIcon sx={{ color: 'primary.main' }} />
+                  <Typography variant="h6">
+                    Dosya Önizleme
+                  </Typography>
+                </Box>
                 
                 <Box sx={{ mb: 2 }}>
                   <Chip
