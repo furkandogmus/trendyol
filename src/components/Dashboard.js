@@ -99,10 +99,25 @@ const Dashboard = ({ urunler }) => {
     return acc;
   }, {}) || {};
 
-  const kategoriChartData = Object.entries(kategoriAnalizi).map(([kategori, count]) => ({
-    kategori,
-    count
-  }));
+  // Top 10 kategori + "Diğer" için optimize et (BarChart için)
+  const kategoriChartData = (() => {
+    const sorted = Object.entries(kategoriAnalizi)
+      .map(([kategori, count]) => ({ kategori, count }))
+      .sort((a, b) => b.count - a.count);
+    
+    const topCategories = sorted.slice(0, 10);
+    const otherCategories = sorted.slice(10);
+    
+    if (otherCategories.length > 0) {
+      const otherCount = otherCategories.reduce((sum, item) => sum + item.count, 0);
+      topCategories.push({
+        kategori: `Diğer (${otherCategories.length} kategori)`,
+        count: otherCount
+      });
+    }
+    
+    return topCategories;
+  })();
 
   // Marka analizi
   const markaAnalizi = urunler?.reduce((acc, urun) => {
@@ -129,6 +144,7 @@ const Dashboard = ({ urunler }) => {
   }));
 
   const COLORS = ['#1976d2', '#388e3c', '#f57c00', '#d32f2f', '#7b1fa2', '#00796b', '#5d4037', '#616161'];
+  const CATEGORY_COLORS = ['#2e7d32', '#388e3c', '#43a047', '#4caf50', '#66bb6a', '#81c784', '#a5d6a7'];
 
   // Şehir analizi - removed as not in new Excel structure
   // Kargo firması analizi - removed as not in new Excel structure
@@ -256,7 +272,7 @@ const Dashboard = ({ urunler }) => {
       {/* Grafikler */}
       <Grid container spacing={3}>
         {/* Sipariş Durumu Pasta Grafiği */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={4}>
           <Card elevation={3}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -266,7 +282,7 @@ const Dashboard = ({ urunler }) => {
                 </Typography>
               </Box>
               {durumChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={380}>
+                <ResponsiveContainer width="100%" height={420}>
                   <PieChart>
                     <Pie
                       data={durumChartData}
@@ -301,6 +317,7 @@ const Dashboard = ({ urunler }) => {
                       verticalAlign="bottom" 
                       height={40}
                       iconType="circle"
+                      formatter={(value, entry, index) => entry.payload?.durum || value}
                       wrapperStyle={{ 
                         fontSize: '12px', 
                         paddingTop: '15px',
@@ -321,7 +338,7 @@ const Dashboard = ({ urunler }) => {
         </Grid>
 
         {/* Marka Analizi Bar Grafiği */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={4}>
           <Card elevation={3}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -331,10 +348,10 @@ const Dashboard = ({ urunler }) => {
                 </Typography>
               </Box>
               {markaChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={380}>
+                <ResponsiveContainer width="100%" height={420}>
                   <BarChart 
                     data={markaChartData} 
-                    margin={{ top: 20, right: 30, left: 30, bottom: 60 }}
+                    margin={{ top: 20, right: 30, left: 30, bottom: 30 }}
                   >
                     <CartesianGrid 
                       strokeDasharray="3 3" 
@@ -344,11 +361,11 @@ const Dashboard = ({ urunler }) => {
                     />
                     <XAxis 
                       dataKey="marka" 
-                      angle={-35}
+                      angle={-90}
                       textAnchor="end"
-                      height={80}
+                      height={120}
                       interval={0}
-                      fontSize={11}
+                      fontSize={12}
                       tick={{ fill: '#555', fontWeight: '500' }}
                       axisLine={{ stroke: '#ccc', strokeWidth: 1 }}
                     />
@@ -376,6 +393,17 @@ const Dashboard = ({ urunler }) => {
                       radius={[4, 4, 0, 0]}
                       stroke="#0d47a1"
                       strokeWidth={1}
+                      name="Ürün Sayısı"
+                    />
+                    <Legend 
+                      verticalAlign="bottom"
+                      height={30}
+                      iconType="rect"
+                      wrapperStyle={{ 
+                        fontSize: '12px', 
+                        paddingTop: '10px',
+                        fontWeight: '500'
+                      }}
                     />
                   </BarChart>
                 </ResponsiveContainer>
@@ -390,10 +418,13 @@ const Dashboard = ({ urunler }) => {
           </Card>
         </Grid>
 
-        {/* Kategori Analizi */}
+      </Grid>
+
+      {/* Kategori Analizi - Büyük Chart */}
+      <Grid container spacing={3} sx={{ mt: 1 }}>
         <Grid item xs={12}>
-          <Card elevation={3}>
-            <CardContent>
+          <Card elevation={3} sx={{ width: '100%', overflow: 'auto' }}>
+            <CardContent sx={{ width: '100%', overflowX: 'auto' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                 <ShippingIcon sx={{ color: 'primary.main' }} />
                 <Typography variant="h6">
@@ -402,34 +433,34 @@ const Dashboard = ({ urunler }) => {
               </Box>
               
               {kategoriChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart 
-                    data={kategoriChartData} 
-                    margin={{ top: 20, right: 40, left: 120, bottom: 30 }}
-                    layout="horizontal"
-                  >
+                <Box sx={{ width: '100%', minWidth: '1000px', overflowX: 'auto' }}>
+                  <ResponsiveContainer width="100%" height={450}>
+                    <BarChart 
+                      data={kategoriChartData} 
+                      margin={{ top: 30, right: 30, left: 30, bottom: 30 }}
+                      barCategoryGap="20%"
+                    >
                     <CartesianGrid 
                       strokeDasharray="3 3" 
-                      stroke="#e0e0e0"
-                      horizontal={false}
-                      vertical={true}
+                      stroke="#e0e0e0" 
+                      horizontal={true}
+                      vertical={false}
                     />
                     <XAxis 
-                      type="number"
-                      fontSize={11}
+                      dataKey="kategori" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={130}
+                      interval={0}
+                      fontSize={14}
                       tick={{ fill: '#555', fontWeight: '500' }}
                       axisLine={{ stroke: '#ccc', strokeWidth: 1 }}
-                      tickLine={{ stroke: '#ccc' }}
                     />
                     <YAxis 
-                      type="category"
-                      dataKey="kategori" 
                       fontSize={11}
                       tick={{ fill: '#555', fontWeight: '500' }}
-                      width={110}
-                      interval={0}
+                      width={45}
                       axisLine={{ stroke: '#ccc', strokeWidth: 1 }}
-                      tickLine={{ stroke: '#ccc' }}
                     />
                     <Tooltip 
                       formatter={(value, name) => [`${value} ürün`, 'Adet']}
@@ -446,40 +477,33 @@ const Dashboard = ({ urunler }) => {
                     <Bar 
                       dataKey="count" 
                       fill="#2e7d32" 
-                      radius={[0, 4, 4, 0]}
+                      radius={[4, 4, 0, 0]}
                       stroke="#1b5e20"
                       strokeWidth={1}
+                      name="Ürün Sayısı"
+                      maxBarSize={60}
                     />
-                  </BarChart>
-                </ResponsiveContainer>
+                    <Legend 
+                      verticalAlign="bottom"
+                      height={30}
+                      iconType="rect"
+                      wrapperStyle={{ 
+                        fontSize: '12px', 
+                        paddingTop: '10px',
+                        fontWeight: '500'
+                      }}
+                    />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Box>
               ) : (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 450 }}>
                   <Typography variant="body2" color="text.secondary">
                     Kategori verisi bulunamadı
                   </Typography>
                 </Box>
               )}
-              
-              {/* Kategori listesi */}
-              <Box sx={{ mt: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <ShippingIcon sx={{ fontSize: 16, color: 'primary.main' }} />
-                  <Typography variant="subtitle2">
-                    Kategoriler:
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {kategoriChartData.map((item) => (
-                    <Chip
-                      key={item.kategori}
-                      label={`${item.kategori}: ${item.count}`}
-                      size="small"
-                      color="info"
-                      variant="outlined"
-                    />
-                  ))}
-                </Box>
-              </Box>
+
               
             </CardContent>
           </Card>
@@ -533,9 +557,7 @@ const Dashboard = ({ urunler }) => {
               <Typography variant="body2" color="text.secondary">
                 Ortalama Piyasa Fiyatı (₺)
               </Typography>
-              <Typography variant="body2" color="info.main" sx={{ mt: 1, fontWeight: 'bold' }}>
-                ${((totalSatis / totalUrun) / dolarKuru).toFixed(2)}
-              </Typography>
+   
             </Paper>
           </Grid>
         </Grid>
