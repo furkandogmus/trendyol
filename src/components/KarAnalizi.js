@@ -32,6 +32,54 @@ const KarAnalizi = ({ urunler, siparisler }) => {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedStockCode, setSelectedStockCode] = useState('');
   const [dolarKuru, setDolarKuru] = useState(42.0);
+  
+  // localStorage'dan direkt veri okuma
+  const [localUrunler, setLocalUrunler] = useState([]);
+  const [localSiparisler, setLocalSiparisler] = useState([]);
+
+  // localStorage'dan urunler ve siparisler verilerini yükle
+  useEffect(() => {
+    const loadDataFromStorage = () => {
+      try {
+        const savedUrunler = localStorage.getItem('urunler');
+        const savedSiparisler = localStorage.getItem('siparisler');
+        
+        if (savedUrunler) {
+          const parsedUrunler = JSON.parse(savedUrunler);
+          setLocalUrunler(Array.isArray(parsedUrunler) ? parsedUrunler : []);
+        }
+        
+        if (savedSiparisler) {
+          const parsedSiparisler = JSON.parse(savedSiparisler);
+          setLocalSiparisler(Array.isArray(parsedSiparisler) ? parsedSiparisler : []);
+        }
+      } catch (error) {
+        console.error('localStorage verisi okunurken hata:', error);
+        setLocalUrunler([]);
+        setLocalSiparisler([]);
+      }
+    };
+
+    // İlk yükleme
+    loadDataFromStorage();
+
+    // localStorage değişikliklerini dinle (diğer sekmelerde değişiklik olursa)
+    const handleStorageChange = (e) => {
+      if (e.key === 'urunler' || e.key === 'siparisler') {
+        loadDataFromStorage();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Aynı tab içindeki değişiklikleri dinlemek için interval
+    const interval = setInterval(loadDataFromStorage, 2000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
 
   // localStorage'dan dolar kurunu yükle ve değişiklikleri dinle
   useEffect(() => {
@@ -63,6 +111,15 @@ const KarAnalizi = ({ urunler, siparisler }) => {
     };
   }, []);
 
+  // Effective veri - localStorage öncelikli, props fallback
+  const effectiveUrunler = useMemo(() => {
+    return localUrunler.length > 0 ? localUrunler : (urunler || []);
+  }, [localUrunler, urunler]);
+
+  const effectiveSiparisler = useMemo(() => {
+    return localSiparisler.length > 0 ? localSiparisler : (siparisler || []);
+  }, [localSiparisler, siparisler]);
+
   // Kargo baremi hesaplama fonksiyonu
   const calculateCargoFee = (faturalanacakTutar) => {
     const tutar = parseFloat(faturalanacakTutar || 0);
@@ -75,12 +132,12 @@ const KarAnalizi = ({ urunler, siparisler }) => {
 
   // Sipariş numarası bazında gruplandırılmış veriler
   const groupedOrders = useMemo(() => {
-    if (!siparisler || !urunler || siparisler.length === 0 || urunler.length === 0) return [];
+    if (!effectiveSiparisler || !effectiveUrunler || effectiveSiparisler.length === 0 || effectiveUrunler.length === 0) return [];
 
     // Önce sipariş numarasına göre grupla
     const orderGroups = {};
     
-    siparisler.forEach(siparis => {
+    effectiveSiparisler.forEach(siparis => {
       const orderNumber = siparis['Sipariş Numarası'] || siparis['Paket No'] || 'UNKNOWN';
       if (!orderGroups[orderNumber]) {
         orderGroups[orderNumber] = [];
@@ -109,7 +166,7 @@ const KarAnalizi = ({ urunler, siparisler }) => {
       
       // Her ürün için detayları hesapla
       const enrichedItems = orderItems.map(siparis => {
-        const urun = urunler.find(u => u['Tedarikçi Stok Kodu'] === siparis['Stok Kodu']);
+        const urun = effectiveUrunler.find(u => u['Tedarikçi Stok Kodu'] === siparis['Stok Kodu']);
         
         const faturalanacakTutar = parseFloat(siparis['Faturalanacak Tutar'] || 0);
         const komisyonOrani = parseFloat(siparis['Komisyon Oranı'] || urun?.['Komisyon Oranı'] || 0);
@@ -168,7 +225,7 @@ const KarAnalizi = ({ urunler, siparisler }) => {
         hasAllUrunMatch: enrichedItems.every(item => item.hasUrunMatch)
       };
     });
-  }, [siparisler, urunler, dolarKuru]);
+  }, [effectiveSiparisler, effectiveUrunler, dolarKuru]);
 
   // Düz liste için enriched siparişler (eski yapıyla uyumluluk için)
   const enrichedSiparisler = useMemo(() => {

@@ -527,15 +527,42 @@ const SiparisTablosu = ({ siparisler, onSiparisUpdate, onSiparisAdd, onSiparisUp
   };
 
   const exportToExcel = () => {
-    if (!filteredSiparisler || filteredSiparisler.length === 0) {
+    // localStorage'dan güncel verileri al
+    const savedSiparisler = localStorage.getItem('siparisler');
+    const currentSiparisler = savedSiparisler ? JSON.parse(savedSiparisler) : siparisler;
+    
+    // Filtreleri güncel veriler üzerinde uygula
+    const currentFilteredSiparisler = currentSiparisler.filter(siparis => {
+      const matchesSearch = !searchTerm || 
+        (siparis['Ürün Adı'] || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (siparis['Alıcı'] || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (siparis['Sipariş Numarası'] || '').toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = !selectedStatus || 
+        (siparis['Sipariş Statüsü'] || '') === selectedStatus;
+      
+      const matchesCustomer = !selectedCustomer || 
+        (siparis['Alıcı'] || '') === selectedCustomer;
+      
+      const matchesUrun = !selectedUrun || 
+        (siparis['Ürün Adı'] || '').toLowerCase().includes(selectedUrun.toLowerCase());
+      
+      const matchesCity = !selectedCity || 
+        (siparis['İl'] || '') === selectedCity;
+      
+      const matchesKargo = !selectedKargo || 
+        (siparis['Kargo Firması'] || '') === selectedKargo;
+      
+      return matchesSearch && matchesStatus && matchesCustomer && matchesUrun && matchesCity && matchesKargo;
+    });
+    
+    if (!currentFilteredSiparisler || currentFilteredSiparisler.length === 0) {
       alert('Dışa aktarılacak veri bulunamadı!');
       return;
     }
 
-
-
     // Sipariş verilerini Excel için hazırla
-    const exportData = filteredSiparisler.map(siparis => {
+    const exportData = currentFilteredSiparisler.map(siparis => {
       const satısTutari = parseFloat(siparis['Satış Tutarı'] || 0);
       const indirimTutari = parseFloat(siparis['İndirim Tutarı'] || 0);
       const faturalanacakTutar = parseFloat(siparis['Faturalanacak Tutar'] || 0);
@@ -605,15 +632,17 @@ const SiparisTablosu = ({ siparisler, onSiparisUpdate, onSiparisAdd, onSiparisUp
   };
 
   const exportAllToExcel = () => {
-    if (!siparisler || siparisler.length === 0) {
+    // localStorage'dan güncel verileri al
+    const savedSiparisler = localStorage.getItem('siparisler');
+    const currentSiparisler = savedSiparisler ? JSON.parse(savedSiparisler) : siparisler;
+    
+    if (!currentSiparisler || currentSiparisler.length === 0) {
       alert('Dışa aktarılacak veri bulunamadı!');
       return;
     }
 
-
-
     // Sipariş verilerini Excel için hazırla (TÜM SİPARİŞLER)
-    const exportData = siparisler.map(siparis => {
+    const exportData = currentSiparisler.map(siparis => {
       const satısTutari = parseFloat(siparis['Satış Tutarı'] || 0);
       const indirimTutari = parseFloat(siparis['İndirim Tutarı'] || 0);
       const faturalanacakTutar = parseFloat(siparis['Faturalanacak Tutar'] || 0);

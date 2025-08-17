@@ -386,15 +386,32 @@ const UrunTablosu = ({ urunler, onUrunUpdate, onUrunUpload }) => {
   };
 
   const exportToExcel = () => {
-    if (!filteredUrunler || filteredUrunler.length === 0) {
+    // localStorage'dan güncel verileri al
+    const savedUrunler = localStorage.getItem('urunler');
+    const currentUrunler = savedUrunler ? JSON.parse(savedUrunler) : urunler;
+    
+    // Filtreleri güncel veriler üzerinde uygula
+    const currentFilteredUrunler = currentUrunler.filter(urun => {
+      const matchesSearch = !searchTerm || 
+        (urun['Ürün Adı'] || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (urun['Marka'] || '').toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStockCode = !stockCodeSearch || 
+        (urun['Tedarikçi Stok Kodu'] || '').toLowerCase().includes(stockCodeSearch.toLowerCase());
+      
+      const matchesStatus = !selectedStatus || 
+        (urun['Durum'] || '') === selectedStatus;
+      
+      return matchesSearch && matchesStockCode && matchesStatus;
+    });
+    
+    if (!currentFilteredUrunler || currentFilteredUrunler.length === 0) {
       alert('Dışa aktarılacak veri bulunamadı!');
       return;
     }
 
-
-
     // Dolar kuru ile birlikte hesaplanmış verileri hazırla
-    const exportData = filteredUrunler.map(urun => {
+    const exportData = currentFilteredUrunler.map(urun => {
       const dolarFiyati = parseFloat(urun['Dolar Fiyatı'] || 0);
       const tlFiyati = dolarFiyati * dolarKuru;
       
@@ -448,15 +465,17 @@ const UrunTablosu = ({ urunler, onUrunUpdate, onUrunUpload }) => {
   };
 
   const exportAllToExcel = () => {
-    if (!urunler || urunler.length === 0) {
+    // localStorage'dan güncel verileri al
+    const savedUrunler = localStorage.getItem('urunler');
+    const currentUrunler = savedUrunler ? JSON.parse(savedUrunler) : urunler;
+    
+    if (!currentUrunler || currentUrunler.length === 0) {
       alert('Dışa aktarılacak veri bulunamadı!');
       return;
     }
 
-
-
     // Dolar kuru ile birlikte hesaplanmış verileri hazırla (TÜM ÜRÜNLER)
-    const exportData = urunler.map(urun => {
+    const exportData = currentUrunler.map(urun => {
       const dolarFiyati = parseFloat(urun['Dolar Fiyatı'] || 0);
       const tlFiyati = dolarFiyati * dolarKuru;
       

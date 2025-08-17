@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ThemeProvider,
   createTheme,
@@ -56,7 +56,14 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
+  // localStorage persistence
+  useEffect(() => {
+    localStorage.setItem('urunler', JSON.stringify(urunler));
+  }, [urunler]);
 
+  useEffect(() => {
+    localStorage.setItem('siparisler', JSON.stringify(siparisler));
+  }, [siparisler]);
 
   const handleUrunUpload = (data) => {
     setUrunler(data);
